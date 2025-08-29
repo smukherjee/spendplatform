@@ -235,24 +235,65 @@ def sidebar_navigation():
     
     st.sidebar.markdown("---")
     
-    # Navigation menu
-    pages = {
-        "📊 Dashboard": "dashboard",
-        "📤 Data Upload": "upload",
-        "🗂️ Master Data": "master_data",
-        "💼 Transaction Management": "transactions",
-        "❌ Error Management": "errors",
-        "📏 Rules Management": "rules",
-        "👥 User Management": "users",
-        "📈 Reports": "reports",
+    # Navigation menu organized by workflow sections
+    st.sidebar.markdown("## 🔄 Data Integration")
+    data_integration_pages = {
+        "� Data Upload & Import": "upload",
+        "📋 Data Validation Rules": "validation_rules",
+        "🔍 Error Detection & Handling": "errors",
+        "� Data Source Management": "data_sources",
+        "🌐 Multi-Language Processing": "language_processing"
     }
     
-    selected_page = st.sidebar.radio("Navigation", list(pages.keys()))
-    return pages[selected_page]
+    st.sidebar.markdown("## 🔧 Data Enrichment & Analysis")
+    data_enrichment_pages = {
+        "🗂️ Master Data Management": "master_data",
+        "🏷️ Data Classification": "classification",
+        "💼 Transaction Management": "transactions", 
+        "📏 Business Rules Management": "rules",
+        "🔄 Data Standardization": "standardization",
+        "� Self-Service Data Tools": "self_service"
+    }
+    
+    st.sidebar.markdown("## 📈 Data Insights")
+    data_insights_pages = {
+        "📊 Analytics Dashboard": "dashboard",
+        "📈 Advanced Reports": "reports",
+        "🎯 Spend Analysis": "spend_analysis",
+        "� Data Governance": "governance",
+        "�👥 User Management": "users"
+    }
+    
+    # Combine all pages for selection
+    all_pages = {**data_integration_pages, **data_enrichment_pages, **data_insights_pages}
+    
+    # Create expandable sections for navigation
+    selected_page_key = None
+    
+    with st.sidebar.expander("🔄 Data Integration", expanded=True):
+        for page_name, page_key in data_integration_pages.items():
+            if st.button(page_name, key=f"nav_{page_key}"):
+                st.session_state.selected_page = page_key
+                
+    with st.sidebar.expander("🔧 Data Enrichment & Analysis", expanded=True):
+        for page_name, page_key in data_enrichment_pages.items():
+            if st.button(page_name, key=f"nav_{page_key}"):
+                st.session_state.selected_page = page_key
+                
+    with st.sidebar.expander("📈 Data Insights", expanded=True):
+        for page_name, page_key in data_insights_pages.items():
+            if st.button(page_name, key=f"nav_{page_key}"):
+                st.session_state.selected_page = page_key
+    
+    # Default to dashboard if no selection
+    if 'selected_page' not in st.session_state:
+        st.session_state.selected_page = 'dashboard'
+        
+    return st.session_state.selected_page
 
 def dashboard_page():
     """Enhanced dashboard using CRUD operations"""
-    st.title("📊 Spend Analytics Dashboard")
+    st.title("📊 Analytics Dashboard")
     
     try:
         # Load data using CRUD operations
@@ -328,14 +369,24 @@ def dashboard_page():
         st.error(f"Error loading dashboard data: {str(e)}")
 
 def upload_page():
-    """Display data upload page"""
-    st.title("📤 Data Upload")
+    """Data Upload & Import Page"""
+    st.title("📤 Data Upload & Import")
+    st.markdown("### Uniform Data Management - Integrate data from multiple sources")
+    
+    # Add information about data integration principles
+    with st.expander("ℹ️ Data Integration Principles"):
+        st.markdown("""
+        - **Multiple Source Integration**: Upload data from various systems and formats
+        - **Smart Duplicate Detection**: Advanced algorithms to identify and handle duplicates
+        - **Data Quality Checks**: Automatic validation during upload process
+        - **User Feedback Loop**: Easy reporting of data adjustments needed
+        """)
     
     # File uploader
     uploaded_file = st.file_uploader(
         "Choose an Excel file", 
         type=['xlsx', 'xls'],
-        help="Upload your spend data Excel file"
+        help="Upload your spend data Excel file. Supports multiple formats and sources."
     )
     
     if uploaded_file is not None:
@@ -458,8 +509,18 @@ def save_transactions(df):
         conn.close()
 
 def master_data_page():
-    """Display master data management page with enhanced table view and pagination"""
+    """Master Data Management - Central Data Repository"""
     st.title("🗂️ Master Data Management")
+    st.markdown("### Central Data Management - Master lists for vendors and categories")
+    
+    # Add information about master data principles
+    with st.expander("ℹ️ Master Data Management Principles"):
+        st.markdown("""
+        - **Centralized Repository**: Single source of truth for vendors, categories, and reference data
+        - **Data Standardization**: Consistent naming conventions and data formats
+        - **Supplier Normalization**: Unified vendor records consolidating variations
+        - **Quality Control**: Data validation and enrichment workflows
+        """)
     
     # Settings section - moved to sidebar for better UX
     with st.sidebar:
@@ -879,8 +940,18 @@ def category_management():
     enhanced_category_management(15)
 
 def error_management_page():
-    """Enhanced error management using CRUD operations"""
-    st.title("❌ Error Management")
+    """Error Detection & Handling - Data Integration Quality Control"""
+    st.title("🔍 Error Detection & Handling")
+    st.markdown("### Automatic Error Detection - Preventing Bad Data Entry")
+    
+    # Add information about error detection principles
+    with st.expander("ℹ️ Error Detection Principles"):
+        st.markdown("""
+        - **Automatic Detection**: Real-time scanning for negative amounts, missing information
+        - **Data Quality Rules**: Built-in validation preventing bad data entry
+        - **User Feedback**: Easy error reporting and resolution workflow  
+        - **Smart Correction**: AI-powered suggestions for data corrections
+        """)
     
     try:
         # Load errors with transaction data
@@ -1482,7 +1553,7 @@ def user_management_page():
 
 def rules_management_page():
     """Business rules management with full CRUD operations"""
-    st.title("📏 Rules Management")
+    st.title("📏 Business Rules Management")
     
     # Check permissions
     user_role = st.session_state.get('user', {}).get('role', '')
@@ -1613,7 +1684,7 @@ def rules_management_page():
 
 def reports_page():
     """Enhanced reports page with CRUD-based data access"""
-    st.title("📈 Reports & Analytics")
+    st.title("📈 Advanced Reports")
     
     try:
         # Get data using CRUD operations
@@ -1833,7 +1904,7 @@ def reports_page():
         st.error(f"Error generating reports: {str(e)}")
 
     """Display reports page"""
-    st.title("📈 Reports & Analytics")
+    st.title("📈 Advanced Reports")
     
     conn = sqlite3.connect('spend_platform.db')
     
@@ -1952,6 +2023,104 @@ def reports_page():
     finally:
         conn.close()
 
+# ===================== NEW PAGE FUNCTIONS =====================
+
+def validation_rules_page():
+    """Data Validation Rules Management Page"""
+    st.title("📋 Data Validation Rules")
+    st.info("🚧 **Coming Soon. Work in progress**")
+    st.markdown("""
+    This page will include:
+    - Built-in rules to prevent bad data from entering the system
+    - Automatic error checking for negative amounts or missing information  
+    - Configurable validation rules for different data types
+    - Real-time data quality monitoring
+    """)
+
+def data_sources_page():
+    """Data Source Management Page"""
+    st.title("🔗 Data Source Management")
+    st.info("🚧 **Coming Soon. Work in progress**")
+    st.markdown("""
+    This page will include:
+    - Integration with multiple data sources
+    - Data source configuration and mapping
+    - Connection status monitoring
+    - Data source validation and testing
+    """)
+
+def language_processing_page():
+    """Multi-Language Data Processing Page"""
+    st.title("🌐 Multi-Language Processing")
+    st.info("🚧 **Coming Soon. Work in progress**")
+    st.markdown("""
+    This page will include:
+    - Multi-language data processing capabilities
+    - Automatic language detection
+    - Translation services integration
+    - Standardized output in preferred language
+    """)
+
+def classification_page():
+    """Data Classification Page"""
+    st.title("🏷️ Data Classification")
+    st.info("🚧 **Coming Soon. Work in progress**")
+    st.markdown("""
+    This page will include:
+    - Spend data classification according to taxonomy
+    - AI-powered category suggestion
+    - Custom classification rules
+    - Structured analysis and reporting capabilities
+    """)
+
+def standardization_page():
+    """Data Standardization Page"""
+    st.title("🔄 Data Standardization")
+    st.info("🚧 **Coming Soon. Work in progress**")
+    st.markdown("""
+    This page will include:
+    - Date, currency, and unit standardization
+    - Supplier name normalization
+    - Data format consistency checks
+    - Automated data cleaning processes
+    """)
+
+def self_service_page():
+    """Self-Service Data Tools Page"""
+    st.title("👤 Self-Service Data Tools")
+    st.info("🚧 **Coming Soon. Work in progress**")
+    st.markdown("""
+    This page will include:
+    - User-driven data augmentation capabilities
+    - Custom dataset creation tools
+    - Data enrichment workflows
+    - No-code data transformation tools
+    """)
+
+def spend_analysis_page():
+    """Advanced Spend Analysis Page"""
+    st.title("🎯 Spend Analysis")
+    st.info("🚧 **Coming Soon. Work in progress**")
+    st.markdown("""
+    This page will include:
+    - Advanced spend analytics and insights
+    - Trend analysis and forecasting
+    - Supplier performance analytics
+    - Cost optimization recommendations
+    """)
+
+def governance_page():
+    """Data Governance Page"""
+    st.title("📋 Data Governance")
+    st.info("🚧 **Coming Soon. Work in progress**")
+    st.markdown("""
+    This page will include:
+    - Clear data rules and responsibilities
+    - Data quality metrics and monitoring
+    - Audit trails and compliance reporting
+    - Data stewardship workflows
+    """)
+
 def main():
     """Main application function"""
     # Initialize database
@@ -1972,22 +2141,45 @@ def main():
     selected_page = sidebar_navigation()
     
     # Route to selected page
-    if selected_page == "dashboard":
-        dashboard_page()
-    elif selected_page == "upload":
+    # Data Integration
+    if selected_page == "upload":
         upload_page()
-    elif selected_page == "master_data":
-        master_data_page()
-    elif selected_page == "transactions":
-        transaction_management_page()
+    elif selected_page == "validation_rules":
+        validation_rules_page()
     elif selected_page == "errors":
         error_management_page()
+    elif selected_page == "data_sources":
+        data_sources_page()
+    elif selected_page == "language_processing":
+        language_processing_page()
+    
+    # Data Enrichment & Analysis
+    elif selected_page == "master_data":
+        master_data_page()
+    elif selected_page == "classification":
+        classification_page()
+    elif selected_page == "transactions":
+        transaction_management_page()
     elif selected_page == "rules":
         rules_management_page()
-    elif selected_page == "users":
-        user_management_page()
+    elif selected_page == "standardization":
+        standardization_page()
+    elif selected_page == "self_service":
+        self_service_page()
+    
+    # Data Insights
+    elif selected_page == "dashboard":
+        dashboard_page()
     elif selected_page == "reports":
         reports_page()
+    elif selected_page == "spend_analysis":
+        spend_analysis_page()
+    elif selected_page == "governance":
+        governance_page()
+    elif selected_page == "users":
+        user_management_page()
+    else:
+        dashboard_page()  # Default to dashboard
 
 if __name__ == "__main__":
     main()
