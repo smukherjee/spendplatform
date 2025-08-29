@@ -63,6 +63,46 @@ A comprehensive Streamlit-based application for managing spend data, vendor info
 4. **Access the application:**
    Open your browser and navigate to `http://localhost:8501`
 
+### Running the setup script (macOS / Linux / WSL)
+
+If you're on macOS, Linux, or using WSL on Windows, run the provided shell setup script:
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+The script will:
+- Verify `uv` is available
+- Run `uv sync` to install dependencies
+- Initialize the database (`init_db.py`)
+- Load sample data (`load_sample_data.py`)
+
+If `uv` is not installed, follow the instructions at https://astral.sh/uv to install it.
+
+### Running the setup script (Windows)
+
+Windows users can run the batch equivalent:
+
+1. Open Command Prompt (cmd.exe) as Administrator.
+2. From the project root run:
+
+```bat
+setup.bat
+```
+
+This batch script performs the same steps as the shell script and will notify you if `uv` is not found.
+
+### Starting the application
+
+After setup completes, start the app with:
+
+```bash
+uv run streamlit run app.py
+```
+
+Then open your browser and go to `http://localhost:8501`.
+
 ## Demo Credentials
 
 - **Admin**: `admin` / `admin123`
