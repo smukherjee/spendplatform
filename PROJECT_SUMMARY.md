@@ -5,7 +5,7 @@
 This is a complete MVP implementation of the Spend Data Management Platform based on the Low Level Design specifications. The application provides comprehensive spend data management capabilities including data upload, validation, master data management, error tracking, and analytics.
 
 ## ✨ Key Features Implemented
-
+   
 ### 1. 🔐 Authentication System
 - Role-based access control (Admin, Spend Manager, Data Analyst)
 - Session management with timeout
