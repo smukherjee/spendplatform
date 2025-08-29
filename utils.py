@@ -102,7 +102,7 @@ def export_to_excel(data_dict, filename):
             worksheet = writer.sheets[sheet_name]
             
             # Add formatting
-            header_format = workbook.add_format({
+            header_format = workbook.add_format({ # type: ignore
                 'bold': True,
                 'text_wrap': True,
                 'valign': 'top',
