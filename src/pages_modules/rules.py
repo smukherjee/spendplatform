@@ -2,7 +2,11 @@
 import streamlit as st
 import pandas as pd
 from src.utils.db_simple import get_db_connection
-from src.utils.debug import debug_logger, show_error_block
+from src.utils.debug import debug_logger, show_error_block, safe_execute
+from src.utils.display import normalize_df_for_display
+from src.config import config
+import shutil
+import time
 
 
 def render_page() -> None:
@@ -18,14 +22,8 @@ def render_page() -> None:
             st.error("❌ Access denied. Admin or Spend Manager role required.")
             return
 
-        # Tabs: List / Add
-        tab_list, tab_add = st.tabs(["📜 Existing Rules", "➕ Add Rule"])
-
-        with tab_add:
-            render_add_rule()
-
-        with tab_list:
-            render_rule_list()
+        # Use an editable table for rules; add via the table toolbar
+        render_rule_list()
 
     except Exception as e:
         debug_logger.exception("Error rendering rules page", e)
@@ -33,118 +31,431 @@ def render_page() -> None:
 
 
 def render_add_rule():
-    """Render Add Rule form."""
-    st.subheader("➕ Create a New Rule")
-    with st.form("add_rule_form"):
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            name = st.text_input("Rule Name")
-            rule_type = st.selectbox("Rule Type", ["Validation", "Categorization", "Transformation", "Other"])
-            condition = st.text_area("Rule Condition / Expression", height=120)
-            description = st.text_area("Description", height=80)
-        with col2:
-            active = st.checkbox("Active", value=True)
-        if st.form_submit_button("Create Rule"):
-            if not name:
-                st.error("Please provide a rule name")
-                return
-
-            created_by = st.session_state.get('user', {}).get('username', 'system')
-            try:
-                with get_db_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "INSERT INTO rules (rule_name, rule_description, rule_type, rule_condition, active_flag, created_by) VALUES (?, ?, ?, ?, ?, ?)",
-                        (name or '', description or '', rule_type or '', condition or '', 1 if active else 0, created_by)
-                    )
-                    conn.commit()
-                st.success("✅ Rule created successfully")
-                rerun_fn = getattr(st, 'experimental_rerun', None)
-                if callable(rerun_fn):
-                    rerun_fn()
-            except Exception as e:
-                debug_logger.exception("Failed to create rule", e)
-                st.error(f"Failed to create rule: {e}")
+    # kept for compatibility but not used; rules are added inline in the table
+    st.info("Add rule via the editable table on the left")
 
 
 def render_rule_list():
-    """Display and edit existing rules."""
+    """Display and edit existing rules using an editable grid."""
     st.subheader("📜 Existing Rules")
-    try:
-        df = load_rules()
-    except Exception as e:
-        debug_logger.exception("Failed to load rules", e)
-        st.error(f"Failed to load rules: {e}")
+
+    success, df, error = safe_execute(load_rules, False, error_title="Failed to Load Rules", show_ui_error=True)
+    if not success or df is None:
         return
 
     if df.empty:
-        st.info("No rules found. Add a rule using the tab on the right.")
+        st.info("No rules found. Add a rule using the editable table.")
         return
 
-    # Render each rule in an expander with an edit form
-    for _, row in df.iterrows():
-        # Guard each row render so one bad row doesn't break the whole page
+    # show_deleted toggle
+    try:
+        show_deleted = st.checkbox("Show soft-deleted rows", value=False)
+    except Exception:
+        show_deleted = False
+
+    if show_deleted:
+        success, df, error = safe_execute(load_rules, True, error_title="Failed to Load Rules", show_ui_error=True)
         try:
-            rule_id = int(row['rule_id'])
-            with st.expander(f"{row.get('rule_name', '')}  —  {row.get('rule_type', '')} (ID: {rule_id})"):
-                with st.form(f"edit_rule_{rule_id}"):
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        name = st.text_input("Rule Name", value=row.get('rule_name', '') )
-                        # Make the index lookup safe in case the stored value is unexpected
-                        rule_options = ["Validation", "Categorization", "Transformation", "Other"]
+            soft_options = []
+            soft_map = {}
+            if df is not None and 'is_deleted' in df.columns:
+                for _, r in df.iterrows():
+                    try:
+                        isdel = r.get('is_deleted')
+                        if pd.isna(isdel):
+                            isdel = 0
                         try:
-                            default_type = row.get('rule_type') or 'Validation'
-                            type_index = rule_options.index(default_type) if default_type in rule_options else 0
+                            isdel_int = int(isdel)
                         except Exception:
-                            type_index = 0
-                        rule_type = st.selectbox("Rule Type", rule_options, index=type_index)
-                        condition = st.text_area("Condition / Expression", value=row.get('rule_condition', '') or '', height=120)
-                        description = st.text_area("Description", value=row.get('rule_description', '') or '', height=80)
-                    with col2:
-                        active = st.checkbox("Active", value=bool(row.get('active_flag', 1)))
+                            isdel_int = 1 if str(isdel).lower() in ('true', '1', 'yes') else 0
+                    except Exception:
+                        isdel_int = 0
 
-                    col_update, col_delete = st.columns([1, 1])
-                    with col_update:
-                        submitted_update = st.form_submit_button("💾 Update Rule")
-                        if submitted_update:
+                    if isdel_int == 1:
+                        rid = r.get('rule_id')
+                        name = r.get('rule_name') or ''
+                        label = f"{rid} — {name}"
+                        soft_options.append(label)
+                        soft_map[label] = rid
+
+            if soft_options:
+                st.markdown("**Hard-delete soft-deleted rules**")
+                to_remove = st.multiselect("Select soft-deleted rules to permanently delete", options=soft_options, key='rule_hard_delete_select')
+                if to_remove:
+                    if st.button("Permanently delete selected"):
+                        if not st.checkbox("Confirm permanent delete of selected items"):
+                            st.info("Check confirmation to permanently delete selected items")
+                        else:
+                            db_path = config.database.path
+                            timestamp = int(time.time())
+                            bak = f"{db_path}.hard_delete_backup.{timestamp}.bak"
                             try:
-                                update_rule(
-                                    rule_id,
-                                    (name or ''),
-                                    (description or ''),
-                                    (rule_type or ''),
-                                    (condition or ''),
-                                    1 if active else 0
-                                )
-                                st.success("✅ Rule updated")
-                                rerun_fn = getattr(st, 'experimental_rerun', None)
-                                if callable(rerun_fn):
-                                    rerun_fn()
+                                shutil.copyfile(db_path, bak)
                             except Exception as e:
-                                debug_logger.exception("Failed to update rule", e)
-                                st.error(f"Failed to update rule: {e}")
+                                show_error_block("Failed to create DB backup", e)
+                                bak = None
 
-                    with col_delete:
-                        submitted_delete = st.form_submit_button("🗑️ Delete Rule")
-                        if submitted_delete:
-                            if delete_rule(rule_id):
-                                st.success("✅ Rule deleted")
+                            try:
+                                ids = [soft_map[s] for s in to_remove]
+                                ids_int = []
+                                for v in ids:
+                                    try:
+                                        ids_int.append(int(v))
+                                    except Exception:
+                                        continue
+
+                                if ids_int:
+                                    placeholders = ','.join(['?'] * len(ids_int))
+                                    with get_db_connection() as conn:
+                                        cur = conn.cursor()
+                                        try:
+                                            conn.execute('BEGIN')
+                                        except Exception:
+                                            pass
+                                        cur.execute(f"DELETE FROM rules WHERE rule_id IN ({placeholders})", tuple(ids_int))
+                                        conn.commit()
+
+                                st.success(f"Permanently deleted {len(ids_int)} rules")
                                 rerun_fn = getattr(st, 'experimental_rerun', None)
                                 if callable(rerun_fn):
+                                    try:
+                                        rerun_fn()
+                                    except Exception:
+                                        pass
+                            except Exception as e:
+                                try:
+                                    conn.rollback()
+                                except Exception:
+                                    pass
+                                if bak:
+                                    try:
+                                        shutil.copyfile(bak, db_path)
+                                        show_error_block("Failed to apply hard delete; DB restored from backup", e)
+                                    except Exception as re:
+                                        show_error_block("Failed to apply hard delete and failed to restore backup", re)
+                                else:
+                                    show_error_block("Failed to apply hard delete", e)
+
+                if st.button("Permanently delete ALL soft-deleted rules"):
+                    if st.checkbox("Confirm permanent delete of ALL soft-deleted rules (irreversible)"):
+                        db_path = config.database.path
+                        timestamp = int(time.time())
+                        bak = f"{db_path}.hard_delete_backup.{timestamp}.bak"
+                        try:
+                            shutil.copyfile(db_path, bak)
+                        except Exception as e:
+                            show_error_block("Failed to create DB backup", e)
+                            bak = None
+
+                        try:
+                            with get_db_connection() as conn:
+                                cur = conn.cursor()
+                                try:
+                                    conn.execute('BEGIN')
+                                except Exception:
+                                    pass
+                                cur.execute("DELETE FROM rules WHERE COALESCE(is_deleted,0) = 1")
+                                conn.commit()
+                            st.success("Permanently deleted all soft-deleted rules")
+                            rerun_fn = getattr(st, 'experimental_rerun', None)
+                            if callable(rerun_fn):
+                                try:
                                     rerun_fn()
+                                except Exception:
+                                    pass
+                        except Exception as e:
+                            try:
+                                conn.rollback()
+                            except Exception:
+                                pass
+                            if bak:
+                                try:
+                                    shutil.copyfile(bak, db_path)
+                                    show_error_block("Failed to delete all; DB restored from backup", e)
+                                except Exception as re:
+                                    show_error_block("Failed to delete all and failed to restore backup", re)
                             else:
-                                st.error("Failed to delete rule")
-        except Exception as e:
-            debug_logger.exception("Failed rendering rule row", e)
-            st.error(f"Failed to render rule ID {row.get('rule_id')}: {e}")
+                                show_error_block("Failed to delete all soft-deleted rules", e)
+            else:
+                st.info("No soft-deleted rules found")
+        except Exception:
+            pass
+
+    # Normalize for display
+    if df is None:
+            display_df = pd.DataFrame()
+    else:
+        try:
+            display_df = normalize_df_for_display(df.copy())
+        except Exception:
+            display_df = df.copy() if isinstance(df, pd.DataFrame) else pd.DataFrame()
+
+    # Editable data editor
+    try:
+        column_config = {}
+        try:
+            if isinstance(display_df, pd.DataFrame) and 'rule_id' in display_df.columns:
+                column_config['rule_id'] = st.column_config.Column(label='ID', disabled=True)
+        except Exception:
+            column_config = {}
+
+        # session override
+        if 'rules_data_editor' in st.session_state:
+            try:
+                df_to_edit = pd.DataFrame(st.session_state['rules_data_editor'])
+            except Exception:
+                df_to_edit = st.session_state.get('rules_data_editor_df', display_df)
+        else:
+            df_to_edit = st.session_state.get('rules_data_editor_df', display_df)
+
+        # Move new rows to top
+        try:
+            if isinstance(df_to_edit, pd.DataFrame) and 'rule_id' in df_to_edit.columns:
+                mask_new = df_to_edit['rule_id'].isna()
+                if mask_new.any():
+                    new_rows = df_to_edit[mask_new]
+                    existing = df_to_edit[~mask_new]
+                    df_to_edit = pd.concat([new_rows, existing], ignore_index=True, sort=False)
+                    # persist both df and the raw editor data so Streamlit shows the ordering immediately
+                    st.session_state['rules_data_editor_df'] = df_to_edit
+                    try:
+                        st.session_state['rules_data_editor'] = df_to_edit.to_dict('records')
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        try:
+            edited = st.data_editor(
+                df_to_edit,
+                use_container_width=True,
+                num_rows="dynamic",
+                column_config=(column_config if column_config else None),
+                key='rules_data_editor'
+            )
+        except Exception:
+            edited = st.data_editor(display_df, use_container_width=True, num_rows="dynamic", key='rules_data_editor')
+
+        # If user added rows via the editor, move new rows (null rule_id) to top and persist
+        try:
+            if isinstance(edited, pd.DataFrame) and 'rule_id' in edited.columns:
+                new_mask = edited['rule_id'].isna()
+                if new_mask.any():
+                    reordered = pd.concat([edited[new_mask], edited[~new_mask]], ignore_index=True, sort=False)
+                    st.session_state['rules_data_editor'] = reordered.to_dict('records')
+                    st.session_state['rules_data_editor_df'] = reordered
+                    rerun_fn = getattr(st, 'experimental_rerun', None)
+                    if callable(rerun_fn):
+                        try:
+                            rerun_fn()
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+    except Exception:
+        # If the whole editable editor block fails, fall back to a safe empty/readonly edited
+        try:
+            edited = display_df.copy() if isinstance(display_df, pd.DataFrame) else pd.DataFrame()
+        except Exception:
+            edited = pd.DataFrame()
+        try:
+            # clear any problematic session override
+            st.session_state.pop('rules_data_editor', None)
+        except Exception:
+            pass
+
+    # Validation
+    validation_msgs = []
+    try:
+        for idx, row in edited.reset_index().iterrows():
+            rid = row.get('rule_id') if 'rule_id' in row.index else None
+            name = row.get('rule_name')
+            if name is None or str(name).strip() == '':
+                validation_msgs.append((idx, rid, 'rule_name is required'))
+    except Exception:
+        validation_msgs = []
+
+    if validation_msgs:
+        with st.expander(f"Validation issues ({len(validation_msgs)})"):
+            for idx, rid, msg in validation_msgs:
+                st.warning(f"Row #{idx} (id={rid}): {msg}")
+
+    # Save changes
+    if st.button("Save changes to rules"):
+        orig = display_df.set_index('rule_id') if (isinstance(display_df, pd.DataFrame) and 'rule_id' in display_df.columns) else display_df
+        new = edited.set_index('rule_id') if 'rule_id' in edited.columns else edited
+
+        # Validate basic required fields
+        invalid_rows = []
+        for _, row in new.reset_index().iterrows():
+            name = row.get('rule_name')
+            if name is None or str(name).strip() == '':
+                invalid_rows.append(row.get('rule_id'))
+
+        if invalid_rows:
+            st.error(f"Validation failed: {len(invalid_rows)} row(s) have empty rule_name. Please fill them before saving.")
+        else:
+            try:
+                orig_ids = set()
+                if isinstance(display_df, pd.DataFrame) and 'rule_id' in display_df.columns:
+                    for v in display_df['rule_id']:
+                        if pd.isna(v):
+                            continue
+                        try:
+                            orig_ids.add(int(v))
+                        except Exception:
+                            continue
+
+                new_ids = set()
+                if 'rule_id' in edited.columns:
+                    for v in edited['rule_id']:
+                        if pd.isna(v):
+                            continue
+                        try:
+                            new_ids.add(int(v))
+                        except Exception:
+                            continue
+
+                to_delete = sorted(list(orig_ids - new_ids))
+            except Exception:
+                to_delete = []
+
+            if to_delete:
+                st.warning(f"This operation will SOFT-DELETE {len(to_delete)} existing rule(s). This can be undone by restoring a backup.")
+                if not st.button("Confirm soft-delete and apply changes"):
+                    st.info("Click 'Confirm soft-delete and apply changes' to proceed.")
+                    pass
+                else:
+                    apply_now = True
+            else:
+                apply_now = True
+
+            if 'apply_now' in locals() and apply_now:
+                db_path = config.database.path
+                timestamp = int(time.time())
+                bak = f"{db_path}.edit_backup.{timestamp}.bak"
+                try:
+                    shutil.copyfile(db_path, bak)
+                except Exception as e:
+                    show_error_block("Failed to create DB backup", e)
+                    bak = None
+
+                applied = 0
+                inserted = 0
+                try:
+                    with get_db_connection() as conn:
+                        cur = conn.cursor()
+                        cur.execute("PRAGMA table_info(rules)")
+                        cols = [r[1] for r in cur.fetchall()]
+
+                        if 'is_deleted' not in cols:
+                            try:
+                                cur.execute("ALTER TABLE rules ADD COLUMN is_deleted INTEGER DEFAULT 0")
+                                cur.execute("PRAGMA table_info(rules)")
+                                cols = [r[1] for r in cur.fetchall()]
+                            except Exception:
+                                pass
+
+                        try:
+                            conn.execute('BEGIN')
+                        except Exception:
+                            pass
+
+                        for rid in to_delete:
+                            try:
+                                if 'is_deleted' in cols:
+                                    cur.execute("UPDATE rules SET is_deleted = 1 WHERE rule_id = ?", (rid,))
+                                else:
+                                    cur.execute("DELETE FROM rules WHERE rule_id = ?", (rid,))
+                            except Exception:
+                                raise
+
+                        for _, row in edited.reset_index().iterrows():
+                            rid = row.get('rule_id') if 'rule_id' in row.index or 'rule_id' in edited.columns else None
+                            name = row.get('rule_name')
+                            desc = row.get('rule_description') if 'rule_description' in row.index else None
+                            rtype = row.get('rule_type') if 'rule_type' in row.index else None
+                            cond = row.get('rule_condition') if 'rule_condition' in row.index else None
+                            active = 1 if row.get('active_flag') else 0
+
+                            if pd.isna(rid) or rid is None:
+                                # insert
+                                if 'is_deleted' in cols:
+                                    cur.execute(
+                                        "INSERT INTO rules (rule_name, rule_description, rule_type, rule_condition, active_flag, is_deleted, created_at) VALUES (?, ?, ?, ?, ?, 0, datetime('now'))",
+                                        (name, desc, rtype, cond, active),
+                                    )
+                                else:
+                                    cur.execute(
+                                        "INSERT INTO rules (rule_name, rule_description, rule_type, rule_condition, active_flag, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                                        (name, desc, rtype, cond, active),
+                                    )
+                                inserted += 1
+                            else:
+                                try:
+                                    rid_int = int(rid)
+                                except Exception:
+                                    continue
+                                cur.execute(
+                                    "UPDATE rules SET rule_name = ?, rule_description = ?, rule_type = ?, rule_condition = ?, active_flag = ? WHERE rule_id = ?",
+                                    (name, desc, rtype, cond, active, rid_int),
+                                )
+                                applied += 1
+
+                        conn.commit()
+
+                    st.success(f"Applied {applied} updates, inserted {inserted} new rules")
+                    rerun_fn = getattr(st, 'experimental_rerun', None)
+                    if callable(rerun_fn):
+                        try:
+                            rerun_fn()
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            st.rerun()
+                        except Exception:
+                            pass
+
+                except Exception as e:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    if bak:
+                        try:
+                            shutil.copyfile(bak, db_path)
+                            show_error_block("Failed to apply changes; DB restored from backup", e)
+                        except Exception as re:
+                            show_error_block("Failed to apply changes and failed to restore backup", re)
+                    else:
+                        show_error_block("Failed to apply changes", e)
 
 
-def load_rules() -> pd.DataFrame:
-    """Load rules from the database ordered by creation time."""
-    with get_db_connection() as conn:
-        query = "SELECT * FROM rules ORDER BY created_at DESC"
-        return pd.read_sql_query(query, conn)
+def load_rules(show_deleted: bool = False) -> pd.DataFrame:
+    """Load rules from the database.
+
+    If show_deleted is False and the rules table has an `is_deleted` column,
+    only return rows where is_deleted is 0 (or NULL treated as 0).
+    """
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("PRAGMA table_info(rules)")
+            cols = [r[1] for r in cur.fetchall()]
+            has_is_deleted = 'is_deleted' in cols
+
+            base = "SELECT * FROM rules"
+            if not show_deleted and has_is_deleted:
+                query = base + " WHERE COALESCE(is_deleted, 0) = 0 ORDER BY created_at DESC"
+            else:
+                query = base + " ORDER BY created_at DESC"
+
+            return pd.read_sql_query(query, conn)
+    except Exception as e:
+        debug_logger.exception("Error loading rules", e)
+        raise Exception(f"Database error loading rules: {str(e)}")
 
 
 def update_rule(rule_id: int, name: str, description: str, rule_type: str, condition: str, active_flag: int) -> None:
