@@ -187,29 +187,21 @@ def main():
         render_page()
     
     elif selected_page == "users":
-        # TODO: Implement users page
-        # st.info("User management page coming soon!")
         from src.pages_modules.user_management import render_page
         logger.info("Rendering user management page")
         render_page()
     
     elif selected_page == "rules":
-        # TODO: Implement rules page
-        st.info("Rules management page coming soon!")
-        # from src.pages_modules.rules import render_rules_page
-        # logger.info("Rendering rules management page")
-        # render_rules_page()
+        from src.pages_modules.rules import render_page
+        logger.info("Rendering rules management page")
+        render_page()
     
     elif selected_page == "errors":
-        # TODO: Implement errors page
-        # st.info("Error resolution page coming soon!")
         from src.pages_modules.error_management import render_page
         logger.info("Rendering error resolution page")
         render_page()
     
     elif selected_page == "reports":
-        # TODO: Implement reports page
-        # st.info("Reports page coming soon!")
         from src.pages_modules.reports import render_page
         logger.info("Rendering reports page")
         render_page()
