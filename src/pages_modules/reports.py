@@ -62,7 +62,7 @@ def render_page() -> None:
         safe_execute(render_export_options, filtered_df, error_title="Failed to Render Export Options", show_ui_error=True)
         
     except Exception as e:
-        debug_logger.error("Error rendering reports page", e)
+        debug_logger.exception("Error rendering reports page", e)
         show_error_block("Reports Page Error", e)
 
 

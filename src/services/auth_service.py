@@ -42,7 +42,7 @@ class AuthService:
             debug_logger.warning("Authentication failed", extra_data={"username": username, "error": str(e)})
             raise
         except Exception as e:
-            debug_logger.error("Unexpected error during authentication", e, {"username": username})
+            debug_logger.exception("Unexpected error during authentication", e, {"username": username})
             raise AuthenticationError("Authentication system error")
 
     @staticmethod

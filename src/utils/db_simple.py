@@ -28,7 +28,7 @@ def get_db_connection() -> Generator[sqlite3.Connection, None, None]:
         debug_logger.debug("Database connection established successfully")
         yield connection
     except sqlite3.Error as e:
-        debug_logger.error("Database operation failed", e)
+        debug_logger.exception("Database operation failed", e)
         if connection:
             connection.rollback()
         raise DatabaseError(f"Database operation failed: {str(e)}")

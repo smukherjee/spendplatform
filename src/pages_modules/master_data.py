@@ -25,7 +25,7 @@ def render_page() -> None:
             render_category_management()
             
     except Exception as e:
-        debug_logger.error("Error rendering master data page", e)
+        debug_logger.exception("Error rendering master data page", e)
         show_error_block("Master Data Page Error", e)
 
 
@@ -117,7 +117,7 @@ def render_vendor_management() -> None:
             st.info("No vendors found. Add some vendors to get started.")
             
     except Exception as e:
-        debug_logger.error("Error in vendor management rendering", e)
+        debug_logger.exception("Error in vendor management rendering", e)
         show_error_block("Vendor Management Error", e)
 
 
@@ -194,7 +194,7 @@ def render_category_management() -> None:
             st.info("No categories found. Add some categories to get started.")
             
     except Exception as e:
-        debug_logger.error("Error in category management rendering", e)
+        debug_logger.exception("Error in category management rendering", e)
         show_error_block("Category Management Error", e)
 
 
@@ -217,7 +217,7 @@ def load_vendors() -> pd.DataFrame:
             
             return df
     except Exception as e:
-        debug_logger.error("Error loading vendors", e)
+        debug_logger.exception("Error loading vendors", e)
         raise Exception(f"Database error loading vendors: {str(e)}")
 
 
@@ -238,7 +238,7 @@ def load_categories() -> pd.DataFrame:
             debug_logger.debug("Categories loaded successfully", {"count": len(df)})
             return df
     except Exception as e:
-        debug_logger.error("Error loading categories", e)
+        debug_logger.exception("Error loading categories", e)
         raise Exception(f"Database error loading categories: {str(e)}")
 
 
@@ -310,8 +310,8 @@ def add_vendor(name: str, code: Optional[str] = None, email: Optional[str] = Non
                 raise Exception(f"Failed to verify vendor insertion")
                 
     except Exception as e:
-        debug_logger.error("Error adding vendor to database", e, {
-            "name": name, 
+        debug_logger.exception("Error adding vendor to database", e, {
+            "name": name,
             "code": code,
             "error_type": type(e).__name__
         })
@@ -354,7 +354,7 @@ def add_category(name: str, parent_id: Optional[int] = None) -> int:
             # Return category_id with null safety check
             return category_id if category_id is not None else 0
     except Exception as e:
-        debug_logger.error("Error adding category", e, {"name": name, "parent_id": parent_id})
+        debug_logger.exception("Error adding category", e, {"name": name, "parent_id": parent_id})
         # Re-raise with more context
         if "UNIQUE constraint failed" in str(e):
             raise Exception(f"Category '{name}' already exists")

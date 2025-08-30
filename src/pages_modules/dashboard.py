@@ -61,7 +61,7 @@ def render_page() -> None:
         safe_execute(render_recent_transactions, df, error_title="Failed to Render Recent Transactions", show_ui_error=True)
         
     except Exception as e:
-        debug_logger.error("Error rendering dashboard page", e)
+        debug_logger.exception("Error rendering dashboard page", e)
         show_error_block("Dashboard Page Error", e)
 
 
@@ -85,7 +85,7 @@ def load_dashboard_data() -> pd.DataFrame:
             debug_logger.debug("Dashboard data loaded successfully", {"rows": len(df)})
             return df
     except Exception as e:
-        debug_logger.error("Error loading dashboard data", e)
+        debug_logger.exception("Error loading dashboard data", e)
         raise Exception(f"Database error loading dashboard data: {str(e)}")
 
 

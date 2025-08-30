@@ -64,7 +64,7 @@ def render_page() -> None:
                         )
                         
     except Exception as e:
-        debug_logger.error("Error rendering upload page", e)
+        debug_logger.exception("Error rendering upload page", e)
         show_error_block("Upload Page Error", e)
 
 

@@ -14,11 +14,11 @@ def render_page() -> None:
         st.sidebar.empty()
         with st.sidebar:
             st.markdown("### 🔒 Please Log In")
-            st.markdown("Sidebar cleared for unauthenticated users")
+            # st.markdown("Sidebar cleared for unauthenticated users")
         
-        st.title("🔐 Login - REFACTORED VERSION")
-        st.markdown("**This is the NEW refactored application - PORT 8502**")
-        st.success("✅ SUCCESS: Sidebar navigation is hidden before authentication!")
+        st.title("🔐 Login")
+        # st.markdown("**This is the NEW refactored application - PORT 8502**")
+        # st.success("✅ SUCCESS: Sidebar navigation is hidden before authentication!")
         
         with st.form("login_form"):
             username = st.text_input("Username")
@@ -46,7 +46,7 @@ def render_page() -> None:
                     debug_logger.warning("Authentication failed", extra_data={"username": username, "error": str(e)})
                     st.error("❌ Invalid username or password")
                 except Exception as e:
-                    debug_logger.error("Unexpected error during authentication", e, {"username": username})
+                    debug_logger.exception("Unexpected error during authentication", e, {"username": username})
                     show_error_block("Login Error", e)
         
         # Demo credentials help
@@ -60,5 +60,5 @@ def render_page() -> None:
             """)
             
     except Exception as e:
-        debug_logger.error("Error rendering login page", e)
+        debug_logger.exception("Error rendering login page", e)
         show_error_block("Login Page Error", e)

@@ -229,7 +229,9 @@ def render_system_health():
                     cursor.execute(f"SELECT COUNT(*) FROM {table}")
                     count = cursor.fetchone()[0]
                     stats_data.append({"Table": table, "Row Count": count})
-                except:
+                except Exception as e:
+                    # Log the exception for diagnostics and continue
+                    debug_logger.exception(f"Failed to get count for table {table}", e)
                     stats_data.append({"Table": table, "Row Count": "N/A"})
             
             stats_df = pd.DataFrame(stats_data)
@@ -313,5 +315,5 @@ def render_debug_settings():
                 # Intentionally cause an error for testing
                 raise ValueError("This is a test error for debugging purposes")
             except Exception as e:
-                debug_logger.error("Test error generated", e)
+                debug_logger.exception("Test error generated", e)
                 show_error_block("Test Error", e, show_details=True)

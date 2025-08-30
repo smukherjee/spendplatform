@@ -38,7 +38,7 @@ class DebugLogger:
                 caller_info = f"{frame.f_back.f_code.co_filename}:{frame.f_back.f_lineno}"
             else:
                 caller_info = "unknown"
-        except:
+        except Exception:
             caller_info = "unknown"
         
         log_msg = f"[{caller_info}] {message}"
@@ -75,6 +75,25 @@ class DebugLogger:
         if extra_data:
             self.logger.error(f"Extra data: {extra_data}")
 
+    def exception(self, message: str, exception: Optional[Exception] = None, extra_data: Optional[Dict] = None):
+        """Log an exception with full traceback. Use inside except blocks or when an Exception is available."""
+        # Use logger.exception to capture stack trace when called inside an exception handler
+        try:
+            if exception is not None:
+                # Log a clear message then include traceback
+                self.logger.error(message)
+                self.logger.error(f"Exception: {str(exception)}")
+                self.logger.error(f"Traceback: {traceback.format_exc()}")
+            else:
+                # If no exception object provided, still log message at exception level
+                self.logger.exception(message)
+
+            if extra_data:
+                self.logger.error(f"Extra data: {extra_data}")
+        except Exception:
+            # Fallback to basic error logging if something goes wrong while logging
+            self.logger.error(f"Failed to log exception for message: {message}")
+
 
 # Global debug logger instance
 debug_logger = DebugLogger()
@@ -107,8 +126,8 @@ def show_error_block(title: str, error: Exception, show_details: bool = True):
             # Show timestamp
             st.text(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    # Log the error
-    debug_logger.error(title, error)
+    # Log the error with full traceback
+    debug_logger.exception(title, error)
 
 
 def debug_function_call(func_name: str, args: tuple = (), kwargs: Optional[dict] = None):
@@ -140,7 +159,7 @@ def debug_decorator(func):
             debug_function_result(func_name, result)
             return result
         except Exception as e:
-            debug_logger.error(f"Exception in {func_name}", e)
+            debug_logger.exception(f"Exception in {func_name}", e)
             raise
     
     return wrapper
@@ -167,11 +186,11 @@ def safe_execute(func, *args, error_title: str = "Operation Failed", show_ui_err
         return True, result, None
         
     except Exception as e:
-        debug_logger.error(f"Error in {func.__name__}", e)
-        
+        debug_logger.exception(f"Error in {func.__name__}", e)
+
         if show_ui_error:
             show_error_block(error_title, e)
-        
+
         return False, None, e
 
 
