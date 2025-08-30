@@ -2,10 +2,17 @@
 Data loader script to populate the database with sample spend data
 """
 
+import os
+import sys
+from datetime import datetime
+
+# Ensure repo root is importable when running this script directly
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 import pandas as pd
 import sqlite3
-from datetime import datetime
-import os
 from src.utils.debug import debug_logger
 
 

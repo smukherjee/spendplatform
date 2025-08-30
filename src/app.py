@@ -2,6 +2,16 @@
 Spend Platform - Main Application Entry Point
 Streamlit-based spend data management application
 """
+import os
+import sys
+
+# When running `python src/app.py` directly, ensure the repository root is on sys.path
+# so `import src.*` imports work. This is safe because when package is installed this
+# check will be a no-op.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 import streamlit as st
 
 from src.utils.debug import debug_logger

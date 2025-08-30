@@ -110,9 +110,9 @@ Then open your browser and go to: `http://localhost:8501`.
 
 The project provides a set of demo users created by the database initializer. Current defaults in the project are:
 
-- **Admin**: `admin` / `admin123`
-- **Spend Manager**: `manager` / `manager123`
-- **Data Analyst**: `analyst` / `analyst123`
+- **Admin**: `admin` / `admin1234`
+- **Spend Manager**: `manager` / `manager1234`
+- **Data Analyst**: `analyst` / `analyst1234`
 
 If you prefer the demo passwords to follow the `{username}1234` pattern, there's a one-off script to reset all passwords safely (it creates a DB backup first):
 

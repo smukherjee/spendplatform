@@ -151,15 +151,18 @@ def create_default_users(cursor: sqlite3.Cursor) -> None:
     
     # Check if users already exist
     # Default demo users
+    # Passwords follow the pattern '{username}1234' for easy demo access.
+    default_password_pattern = "{username}1234"
     default_users = [
-        ('admin', 'admin123', 'Admin'),
-        ('manager', 'manager123', 'Spend Manager'),
-        ('analyst', 'analyst123', 'Data Analyst')
+        ('admin', 'Admin'),
+        ('manager', 'Spend Manager'),
+        ('analyst', 'Data Analyst')
     ]
 
-    for username, password, role in default_users:
-        # Compute secure Argon2 hash for the demo password
-        password_hash = crypto_hash_password(password)
+    for username, role in default_users:
+        # Compute secure Argon2 hash for the demo password using pattern
+        plain_password = default_password_pattern.format(username=username)
+        password_hash = crypto_hash_password(plain_password)
 
         # Insert new user or update existing demo user to use secure hash
         cursor.execute("SELECT user_id FROM users WHERE username = ?", (username,))
