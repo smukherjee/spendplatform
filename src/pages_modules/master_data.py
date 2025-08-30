@@ -131,7 +131,7 @@ def render_category_management() -> None:
         with st.expander("➕ Add New Category"):
             with st.form("add_category"):
                 category_name = st.text_input("Category Name")
-                category_description = st.text_area("Description", height=80)
+                description = st.text_area("Description", height=80)
 
                 # Load parent categories safely
                 success, parent_categories, error = safe_execute(
@@ -159,13 +159,13 @@ def render_category_management() -> None:
                     debug_logger.debug("Add category form submitted", {
                         "category_name": category_name,
                         "parent_id": parent_id,
-                        "category_description_provided": bool(category_description)
+                        "description_provided": bool(description)
                     })
 
                     if category_name:
                         success, result, error = safe_execute(
                             add_category,
-                            category_name, parent_id, category_description,
+                            category_name, parent_id, description,
                             error_title="Failed to Add Category",
                             show_ui_error=True
                         )

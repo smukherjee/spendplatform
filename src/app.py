@@ -92,12 +92,14 @@ def sidebar_navigation():
                     st.session_state.selected_page = "upload"
                     st.rerun()
             
-            # Master Data Management
+            # Master Data Management (split into Vendors and Categories)
             if permissions.get("can_manage_master_data", False):
-                if st.button("📋 Master Data", key="nav_master_data", use_container_width=True):
-                    st.session_state.selected_page = "master_data"
+                if st.button("� Vendors", key="nav_vendors", use_container_width=True):
+                    st.session_state.selected_page = "vendors"
                     st.rerun()
-                    logger.debug("Master data page selected")
+                if st.button("📂 Categories", key="nav_categories", use_container_width=True):
+                    st.session_state.selected_page = "categories"
+                    st.rerun()
             
             # User Management
             if permissions.get("can_manage_users", False):
@@ -181,9 +183,14 @@ def main():
         logger.info("Rendering upload page")
         render_page()
     
-    elif selected_page == "master_data":
-        from src.pages_modules.master_data import render_page
-        logger.info("Rendering master data management page")
+    elif selected_page == "vendors":
+        from src.pages_modules.vendor_management import render_page
+        logger.info("Rendering vendor management page")
+        render_page()
+
+    elif selected_page == "categories":
+        from src.pages_modules.category_management import render_page
+        logger.info("Rendering category management page")
         render_page()
     
     elif selected_page == "users":
