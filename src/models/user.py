@@ -1,7 +1,7 @@
 """User model for authentication and authorization."""
 from datetime import datetime
 from typing import Optional
-import hashlib
+from src.utils.crypto import hash_password as crypto_hash_password, verify_password as crypto_verify_password
 from src.models.base import BaseModel
 from src.exceptions.base import AuthenticationError
 from src.utils.db_simple import get_db_connection
@@ -51,19 +51,20 @@ class User(BaseModel):
         Returns:
             Hashed password
         """
-        # TODO: Replace with more secure hashing (e.g., argon2)
-        return hashlib.md5(password.encode()).hexdigest()
+        # Use Argon2 wrapper
+        return crypto_hash_password(password)
 
     def verify_password(self, password: str) -> bool:
         """Verify a password against the stored hash.
-        
+
         Args:
             password: Plain text password to verify
-            
+
         Returns:
             True if password matches, False otherwise
         """
-        return self.password_hash == self.hash_password(password)
+        # Use Argon2 verification; supports rehashing on next login elsewhere
+        return crypto_verify_password(self.password_hash, password)
 
     def update_last_login(self) -> None:
         """Update the last login timestamp."""

@@ -139,12 +139,19 @@ class AuthService:
     def logout():
         """Log out the current user by clearing session state."""
         import streamlit as st
-        
-        # Clear authentication-related session state
-        for key in ['authenticated', 'username', 'user_id', 'role']:
-            if key in st.session_state:
+        # Clear non-internal session state keys to avoid leaking user-specific state
+        keys = list(st.session_state.keys())
+        for key in keys:
+            # Preserve Streamlit internal keys (start with underscore)
+            if key.startswith('_'):
+                continue
+            try:
                 del st.session_state[key]
-        
-        # Reset to default state
+            except Exception:
+                # ignore inability to delete certain keys
+                pass
+
+        # Set safe defaults after clearing
         st.session_state.authenticated = False
         st.session_state.user_exists = False
+        st.session_state.selected_page = "dashboard"

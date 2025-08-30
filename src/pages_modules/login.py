@@ -36,6 +36,8 @@ def render_page() -> None:
                     
                     # Set session state
                     st.session_state.authenticated = True
+                    # Ensure the selected page defaults to dashboard for the new user
+                    st.session_state.selected_page = "dashboard"
                     st.session_state.user = user_info
                     debug_logger.debug("Session state updated for authenticated user")
                     
@@ -51,13 +53,15 @@ def render_page() -> None:
         
         # Demo credentials help
         with st.expander("ℹ️ Demo Credentials"):
-            st.markdown("""
-            Use these credentials for testing:
-            
-            - **Admin**: `admin` / `admin123`
-            - **Spend Manager**: `manager` / `manager123`
-            - **Data Analyst**: `analyst` / `analyst123`
-            """)
+                st.markdown("""
+                The demo password policy has been updated for this environment.
+
+                Use the pattern: `username1234` (for example, `admin` -> `admin1234`).
+
+                - **Admin**: `admin` / `admin1234`
+                - **Spend Manager**: `manager` / `manager1234`
+                - **Data Analyst**: `analyst` / `analyst1234`
+                """)
             
     except Exception as e:
         debug_logger.exception("Error rendering login page", e)

@@ -1,6 +1,7 @@
 """Database initialization and setup module."""
 import sqlite3
-import hashlib
+from src.utils.crypto import hash_password as crypto_hash_password
+from src.utils.debug import debug_logger
 from pathlib import Path
 from typing import Optional
 from src.config import config
@@ -27,13 +28,13 @@ def init_database(database_path: Optional[str] = None) -> None:
         
         # Create tables
         create_tables(cursor)
-        
+
         # Create default users
         create_default_users(cursor)
-        
+
         conn.commit()
         conn.close()
-        
+
     except sqlite3.Error as e:
         raise DatabaseError(f"Failed to initialize database: {str(e)}")
 
@@ -149,23 +150,61 @@ def create_default_users(cursor: sqlite3.Cursor) -> None:
     """Create default demo users if they don't exist."""
     
     # Check if users already exist
-    cursor.execute("SELECT COUNT(*) FROM users")
-    user_count = cursor.fetchone()[0]
-    
-    if user_count == 0:
-        # Create default users
-        default_users = [
-            ('admin', 'admin123', 'Admin'),
-            ('manager', 'manager123', 'Spend Manager'),
-            ('analyst', 'analyst123', 'Data Analyst')
-        ]
-        
-        for username, password, role in default_users:
-            password_hash = hashlib.md5(password.encode()).hexdigest()
-            cursor.execute('''
+    # Default demo users
+    default_users = [
+        ('admin', 'admin123', 'Admin'),
+        ('manager', 'manager123', 'Spend Manager'),
+        ('analyst', 'analyst123', 'Data Analyst')
+    ]
+
+    for username, password, role in default_users:
+        # Compute secure Argon2 hash for the demo password
+        password_hash = crypto_hash_password(password)
+
+        # Insert new user or update existing demo user to use secure hash
+        cursor.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        if row:
+            cursor.execute(
+                "UPDATE users SET password_hash = ?, role = ? WHERE username = ?",
+                (password_hash, role, username)
+            )
+        else:
+            cursor.execute(
+                '''
                 INSERT INTO users (username, password_hash, role)
                 VALUES (?, ?, ?)
-            ''', (username, password_hash, role))
+                ''',
+                (username, password_hash, role)
+            )
+
+
+def reset_all_user_passwords(cursor: sqlite3.Cursor, pattern: str = "{username}1234") -> int:
+    """Reset every user's password to the given pattern (formatted with username).
+
+    Args:
+        cursor: SQLite cursor
+        pattern: A format string where '{username}' will be replaced by username
+
+    Returns:
+        Number of users updated
+    """
+    cursor.execute("SELECT username FROM users")
+    rows = cursor.fetchall()
+    updated = 0
+    for (username,) in rows:
+        try:
+            new_plain = pattern.format(username=username)
+            new_hash = crypto_hash_password(new_plain)
+            cursor.execute(
+                "UPDATE users SET password_hash = ? WHERE username = ?",
+                (new_hash, username)
+            )
+            updated += 1
+        except Exception as e:
+            debug_logger.exception("Failed to reset password for user", e, {"username": username})
+    debug_logger.info("Passwords reset for users", {"count": updated})
+    return updated
 
 
 def create_indexes(cursor: sqlite3.Cursor) -> None:
