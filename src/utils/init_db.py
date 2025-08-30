@@ -72,10 +72,24 @@ def create_tables(cursor: sqlite3.Cursor) -> None:
             category_id INTEGER PRIMARY KEY AUTOINCREMENT,
             category_name TEXT NOT NULL,
             parent_category_id INTEGER,
+            category_description TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (parent_category_id) REFERENCES categories (category_id)
         )
     ''')
+
+    # Ensure backward-compatible schema migrations (add new columns if needed)
+    try:
+        cursor.execute("PRAGMA table_info(categories)")
+        existing_cols = [row[1] for row in cursor.fetchall()]
+        if 'category_description' not in existing_cols:
+            debug_logger.info("Migrating categories table: adding category_description column")
+            try:
+                cursor.execute("ALTER TABLE categories ADD COLUMN category_description TEXT")
+            except Exception as me:
+                debug_logger.exception("Failed to add category_description column", me)
+    except Exception as e:
+        debug_logger.exception("Failed to check/perform categories table migration", e)
     
     # Spend transactions table
     cursor.execute('''

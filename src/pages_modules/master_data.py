@@ -131,48 +131,57 @@ def render_category_management() -> None:
         with st.expander("➕ Add New Category"):
             with st.form("add_category"):
                 category_name = st.text_input("Category Name")
-                
+                category_description = st.text_area("Description", height=80)
+
                 # Load parent categories safely
                 success, parent_categories, error = safe_execute(
                     load_categories,
                     error_title="Failed to Load Categories",
                     show_ui_error=False  # Don't show error for initial load
                 )
-                
-                parent_options = ["None"]
+
+                # Build options as (id, name) tuples so we can reliably map selection to ID
+                parent_option_tuples = [(None, "None")]
                 if success and parent_categories is not None and not parent_categories.empty:
-                    parent_options += parent_categories['category_name'].tolist()
-                    
-                parent_category = st.selectbox("Parent Category", parent_options)
-                debug_logger.debug("Category form initialized", {"parent_options_count": len(parent_options)})
-                
+                    parent_option_tuples += list(zip(parent_categories['category_id'].tolist(), parent_categories['category_name'].tolist()))
+
+                selected_parent = st.selectbox("Parent Category", parent_option_tuples, format_func=lambda x: x[1])
+                # selected_parent is a tuple (id, name)
+                parent_id = None
+                try:
+                    parent_id = selected_parent[0] if selected_parent is not None else None
+                except Exception:
+                    parent_id = None
+
+                debug_logger.debug("Category form initialized", {"parent_options_count": len(parent_option_tuples), "selected_parent_id": parent_id})
+
                 if st.form_submit_button("Add Category"):
                     debug_logger.debug("Add category form submitted", {
                         "category_name": category_name,
-                        "parent_category": parent_category
+                        "parent_id": parent_id,
+                        "category_description_provided": bool(category_description)
                     })
-                    
+
                     if category_name:
-                        # Determine parent ID
-                        parent_id = None
-                        if parent_category != "None" and success and parent_categories is not None and not parent_categories.empty:
-                            try:
-                                parent_id = parent_categories[parent_categories['category_name'] == parent_category]['category_id'].iloc[0]
-                                debug_logger.debug("Parent category resolved", {"parent_id": parent_id})
-                            except Exception as e:
-                                debug_logger.warning("Failed to resolve parent category", extra_data={"parent_category": parent_category, "error": str(e)})
-                        
                         success, result, error = safe_execute(
                             add_category,
-                            category_name, parent_id,
+                            category_name, parent_id, category_description,
                             error_title="Failed to Add Category",
                             show_ui_error=True
                         )
-                        
+
                         if success:
                             debug_logger.info("Category added successfully", {"category_name": category_name, "parent_id": parent_id})
                             st.success("✅ Category added successfully!")
-                            st.rerun()
+                            # Use experimental_rerun if available for better compatibility
+                            rerun_fn = getattr(st, 'experimental_rerun', None)
+                            if callable(rerun_fn):
+                                rerun_fn()
+                            else:
+                                try:
+                                    st.rerun()
+                                except Exception:
+                                    pass
                     else:
                         debug_logger.warning("Add category attempt with empty name")
                         st.error("❌ Category name is required")
@@ -322,7 +331,7 @@ def add_vendor(name: str, code: Optional[str] = None, email: Optional[str] = Non
             raise Exception(f"Database error: {str(e)}")
 
 
-def add_category(name: str, parent_id: Optional[int] = None) -> int:
+def add_category(name: str, parent_id: Optional[int] = None, description: Optional[str] = None) -> int:
     """Add a new category to the database.
     
     Args:
@@ -344,9 +353,9 @@ def add_category(name: str, parent_id: Optional[int] = None) -> int:
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO categories (category_name, parent_category_id, created_at)
-                VALUES (?, ?, datetime('now'))
-            """, (name, parent_id))
+                INSERT INTO categories (category_name, parent_category_id, description, created_at)
+                VALUES (?, ?, ?, datetime('now'))
+            """, (name, parent_id, description))
             conn.commit()
             category_id = cursor.lastrowid
             debug_logger.info("Category added successfully", {"name": name, "parent_id": parent_id})
