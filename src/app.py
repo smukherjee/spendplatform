@@ -13,13 +13,17 @@ def init_app():
     logger.info("Starting main application")
     logger.info("Initializing application")
     
-    # Page configuration
-    # st.set_page_config(
-    #     page_title="Spend Pxlatform",
-    #     page_icon="💰",
-    #     layout="wide",
-    #     initial_sidebar_state="expanded"
-    # )
+    # Page configuration - IMPORTANT: Set this before any other Streamlit commands
+    st.set_page_config(
+        page_title="Spend Platform",
+        page_icon="💰",
+        layout="wide",
+        initial_sidebar_state="collapsed"  # Start with sidebar collapsed
+    )
+    
+    # CRITICAL: Hide automatic page discovery by clearing any auto-generated navigation
+    # This prevents Streamlit from automatically showing pages from src/pages/ directory
+    st.session_state._pages = {}
     
     logger.debug("Page config set successfully")
     
@@ -121,6 +125,14 @@ def sidebar_navigation():
     
     return None
 
+def clear_sidebar():
+    """Clear all sidebar content"""
+    logger.debug("Clearing sidebar for unauthenticated user")
+    # This ensures the sidebar is completely empty
+    with st.sidebar:
+        st.empty()  # This should clear all sidebar content
+    logger.debug("Sidebar cleared successfully")
+
 def main():
     """Main application function"""
     init_app()
@@ -132,6 +144,8 @@ def main():
     # Check authentication status
     if not st.session_state.authenticated:
         logger.debug("User not authenticated, showing login page")
+        # Important: Clear sidebar completely for unauthenticated users
+        clear_sidebar()
         selected_page = "login"
         page_title = "Login"
     else:
@@ -143,52 +157,52 @@ def main():
     
     # Render selected page
     if selected_page == "login":
-        from src.pages.login import render_page
+        from src.pages_modules.login import render_page
         logger.info("Rendering login page")
         render_page()
     
     elif selected_page == "dashboard":
-        from src.pages.dashboard import render_page
+        from src.pages_modules.dashboard import render_page
         logger.info("Rendering dashboard page")
         render_page()
     
     elif selected_page == "upload":
-        from src.pages.upload import render_page
+        from src.pages_modules.upload import render_page
         logger.info("Rendering upload page")
         render_page()
     
     elif selected_page == "master_data":
-        from src.pages.master_data import render_page
+        from src.pages_modules.master_data import render_page
         logger.info("Rendering master data management page")
         render_page()
     
     elif selected_page == "users":
         # TODO: Implement users page
-        st.info("User management page coming soon!")
-        # from src.pages.users import render_users_page
-        # logger.info("Rendering user management page")
-        # render_users_page()
+        # st.info("User management page coming soon!")
+        from src.pages_modules.user_management import render_page
+        logger.info("Rendering user management page")
+        render_page()
     
     elif selected_page == "rules":
         # TODO: Implement rules page
         st.info("Rules management page coming soon!")
-        # from src.pages.rules import render_rules_page
+        # from src.pages_modules.rules import render_rules_page
         # logger.info("Rendering rules management page")
         # render_rules_page()
     
     elif selected_page == "errors":
         # TODO: Implement errors page
-        st.info("Error resolution page coming soon!")
-        # from src.pages.errors import render_error_resolution_page
-        # logger.info("Rendering error resolution page")
-        # render_error_resolution_page()
+        # st.info("Error resolution page coming soon!")
+        from src.pages_modules.error_management import render_page
+        logger.info("Rendering error resolution page")
+        render_page()
     
     elif selected_page == "reports":
         # TODO: Implement reports page
-        st.info("Reports page coming soon!")
-        # from src.pages.reports import render_reports_page
-        # logger.info("Rendering reports page")
-        # render_reports_page()
+        # st.info("Reports page coming soon!")
+        from src.pages_modules.reports import render_page
+        logger.info("Rendering reports page")
+        render_page()
 
 if __name__ == "__main__":
     main()
