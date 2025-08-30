@@ -108,17 +108,17 @@ The application comes pre-loaded with:
 # 1. Initialize project
 uv init --python 3.13
 
-# 2. Install dependencies  
+# 2. Install dependencies
 uv add streamlit pandas openpyxl plotly xlsxwriter
 
 # 3. Initialize database
-uv run python init_db.py
+uv run python scripts/init_db.py
 
 # 4. Load sample data
-uv run python load_sample_data.py
+uv run python scripts/load_sample_data.py
 
 # 5. Start application
-uv run streamlit run app.py
+uv run streamlit run src/app.py
 ```
 
 Or use the automated setup script:
@@ -136,17 +136,18 @@ Or use the automated setup script:
 
 ```
 spendplatform/
-├── app.py                    # Main Streamlit application (2,000+ lines)
-├── crud_operations.py        # Complete CRUD operations for all tables (600+ lines)
-├── config.py                 # Configuration settings and constants
-├── utils.py                  # Utility functions and data processing
-├── init_db.py               # Database initialization script
-├── load_sample_data.py      # Sample data loader with 1,000 transactions
-├── test_crud.py             # Comprehensive CRUD testing script (NEW)
-├── setup.sh                 # Automated setup script
-├── requirements.txt         # Python dependencies via uv
-├── pyproject.toml          # uv project configuration
-├── spend_platform.db       # SQLite database (auto-created)
+├── src/                      # Refactored application package
+│   ├── app.py                # Main Streamlit application
+│   ├── config.py             # Configuration settings and constants
+│   └── ...                   # Other source modules (models, services, utils)
+├── scripts/                  # Runnable maintenance scripts
+│   ├── init_db.py            # Initializes database (delegates to src.utils.init_db)
+│   ├── load_sample_data.py   # Sample data loader
+│   └── reset_passwords.py    # One-off password-reset tool (creates DB backup)
+├── setup.sh                  # Automated setup script
+├── requirements.txt          # Python dependencies via uv
+├── pyproject.toml            # uv project configuration
+├── spend_platform.db         # SQLite database (auto-created)
 ├── context/                # Sample data files
 │   ├── sample spend data- filled.xlsx
 │   ├── Categorization File.xlsx

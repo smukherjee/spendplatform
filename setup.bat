@@ -28,13 +28,13 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo 🗄️ Initializing database...
-uv run python init_db.py
+uv run python scripts/init_db.py
 if %ERRORLEVEL% NEQ 0 (
     echo WARNING: database initialization script failed. Check the output.
 )
 
 echo 📊 Loading sample data...
-uv run python load_sample_data.py
+uv run python scripts/load_sample_data.py
 if %ERRORLEVEL% NEQ 0 (
     echo WARNING: sample data load failed. Check the output.
 )
@@ -43,7 +43,7 @@ echo.
 echo 🎉 Setup completed (or attempted). If there were warnings above, address them and re-run this script.
 echo.
 echo To start the application:
-echo   uv run streamlit run app.py
+echo   uv run streamlit run src/app.py
 echo.
 echo Then open your browser and go to: http://localhost:8501
 echo.

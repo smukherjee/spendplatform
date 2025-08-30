@@ -19,17 +19,17 @@ uv sync
 
 # Initialize database
 echo "🗄️ Initializing database..."
-uv run python init_db.py
+uv run python scripts/init_db.py
 
 # Load sample data
 echo "📊 Loading sample data..."
-uv run python load_sample_data.py
+uv run python scripts/load_sample_data.py
 
 echo ""
 echo "🎉 Setup completed successfully!"
 echo ""
 echo "To start the application:"
-echo "   uv run streamlit run app.py"
+echo "   uv run streamlit run src/app.py"
 echo ""
 echo "Then open your browser and go to: http://localhost:8501"
 echo ""
