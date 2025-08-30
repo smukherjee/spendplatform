@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 from typing import Optional
 from src.utils.db_simple import get_db_connection
+from src.utils.display import normalize_df_for_display
 from src.config import config
 from src.utils.debug import debug_logger, show_error_block, safe_execute
 
@@ -111,7 +112,10 @@ def render_vendor_management() -> None:
         if success and vendors_df is not None and not vendors_df.empty:
             debug_logger.debug("Displaying vendors", {"count": len(vendors_df)})
             st.subheader(f"Existing Vendors ({len(vendors_df)})")
-            st.dataframe(vendors_df, use_container_width=True)
+            try:
+                st.dataframe(normalize_df_for_display(vendors_df), use_container_width=True)
+            except Exception:
+                st.dataframe(vendors_df, use_container_width=True)
         elif success:
             debug_logger.debug("No vendors found")
             st.info("No vendors found. Add some vendors to get started.")
@@ -197,7 +201,10 @@ def render_category_management() -> None:
         if success and categories_df is not None and not categories_df.empty:
             debug_logger.debug("Displaying categories", {"count": len(categories_df)})
             st.subheader(f"Existing Categories ({len(categories_df)})")
-            st.dataframe(categories_df, use_container_width=True)
+            try:
+                st.dataframe(normalize_df_for_display(categories_df), use_container_width=True)
+            except Exception:
+                st.dataframe(categories_df, use_container_width=True)
         elif success:
             debug_logger.debug("No categories found")
             st.info("No categories found. Add some categories to get started.")

@@ -124,6 +124,12 @@ def sidebar_navigation():
                 if st.button("📊 Reports", key="nav_reports", use_container_width=True):
                     st.session_state.selected_page = "reports"
                     st.rerun()
+
+            # Categorization upload/import
+            if permissions.get("can_manage_master_data", False):
+                if st.button("📥 Categorization Upload", key="nav_categorization_upload", use_container_width=True):
+                    st.session_state.selected_page = "categorization_upload"
+                    st.rerun()
             
             # Logout button
             st.markdown("---")
@@ -211,6 +217,11 @@ def main():
     elif selected_page == "reports":
         from src.pages_modules.reports import render_page
         logger.info("Rendering reports page")
+        render_page()
+
+    elif selected_page == "categorization_upload":
+        from src.pages_modules.categorization_upload import render_page
+        logger.info("Rendering categorization upload page")
         render_page()
 
 if __name__ == "__main__":

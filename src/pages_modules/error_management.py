@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from src.utils.db_simple import get_db_connection
 from src.config import config
 from src.utils.debug import debug_logger, show_error_block, safe_execute, enable_debug_mode, disable_debug_mode
+from src.utils.display import normalize_df_for_display
 
 
 def render_page() -> None:
@@ -235,7 +236,10 @@ def render_system_health():
                     stats_data.append({"Table": table, "Row Count": "N/A"})
             
             stats_df = pd.DataFrame(stats_data)
-            st.dataframe(stats_df, use_container_width=True)
+            try:
+                st.dataframe(normalize_df_for_display(stats_df), use_container_width=True)
+            except Exception:
+                st.dataframe(stats_df, use_container_width=True)
             
     except Exception as e:
         st.error(f"Failed to load database statistics: {str(e)}")
@@ -249,7 +253,10 @@ def render_system_health():
     ]
     
     activity_df = pd.DataFrame(activity_data)
-    st.dataframe(activity_df, use_container_width=True)
+    try:
+        st.dataframe(normalize_df_for_display(activity_df), use_container_width=True)
+    except Exception:
+        st.dataframe(activity_df, use_container_width=True)
 
 
 def render_debug_settings():

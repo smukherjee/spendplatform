@@ -14,31 +14,111 @@ def render_page() -> None:
 
         with st.expander("➕ Add New Category"):
             with st.form("add_category"):
-                category_name = st.text_input("Category Name")
+                category_name = st.text_input("New Category Name")
                 description = st.text_area("Description", height=80)
 
-                success, parent_categories, error = safe_execute(
+                # Load categories and build full-path options
+                success, categories_df, error = safe_execute(
                     load_categories,
                     error_title="Failed to Load Categories",
                     show_ui_error=False
                 )
 
-                parent_option_tuples = [(None, "None")]
-                if success and parent_categories is not None and not parent_categories.empty:
-                    parent_option_tuples += list(zip(parent_categories['category_id'].tolist(), parent_categories['category_name'].tolist()))
+                path_options = [(None, "None")]
+                if success and categories_df is not None and not categories_df.empty:
+                    # Defensive conversions: ensure id columns are numeric where possible
+                    try:
+                        if 'category_id' in categories_df.columns:
+                            categories_df['category_id'] = pd.to_numeric(categories_df['category_id'], errors='coerce').astype('Int64')
+                        if 'parent_category_id' in categories_df.columns:
+                            categories_df['parent_category_id'] = pd.to_numeric(categories_df['parent_category_id'], errors='coerce').astype('Int64')
+                    except Exception:
+                        # If conversion fails, continue with original values but avoid crashing
+                        pass
 
-                selected_parent = st.selectbox("Parent Category", parent_option_tuples, format_func=lambda x: x[1])
+                    # build parent map safely
+                    id_to_parent = {}
+                    id_to_name = {}
+
+                    def to_int_safe(v):
+                        if pd.isna(v):
+                            return None
+                        # bytes -> try decode then int; fallback to int.from_bytes
+                        if isinstance(v, (bytes, bytearray)):
+                            try:
+                                s = v.decode('utf-8')
+                                return int(s)
+                            except Exception:
+                                try:
+                                    return int.from_bytes(v, 'little')
+                                except Exception:
+                                    return None
+                        try:
+                            return int(v)
+                        except Exception:
+                            return None
+
+                    for _, r in categories_df.iterrows():
+                        cid = to_int_safe(r.get('category_id'))
+                        if cid is None:
+                            continue
+                        pid = to_int_safe(r.get('parent_category_id'))
+                        name = r.get('category_name')
+                        if name is None:
+                            name = ''
+                        id_to_parent[cid] = pid
+                        id_to_name[cid] = str(name)
+
+                    # helper to build path for a node
+                    path_cache = {}
+
+                    def build_path(cid):
+                        if cid in path_cache:
+                            return path_cache[cid]
+                        parts = []
+                        cur = cid
+                        seen = set()
+                        while cur is not None and cur not in seen:
+                            seen.add(cur)
+                            name = id_to_name.get(cur, None)
+                            if name is None:
+                                break
+                            parts.append(name)
+                            cur = id_to_parent.get(cur)
+                        parts.reverse()
+                        path_cache[cid] = ' > '.join(parts)
+                        return path_cache[cid]
+
+                    # Build list of (id, path)
+                    rows = []
+                    for cid in id_to_name.keys():
+                        try:
+                            p = build_path(cid)
+                            rows.append((cid, p))
+                        except Exception:
+                            continue
+
+                    # Sort by path for nicer display
+                    rows_sorted = sorted(rows, key=lambda x: x[1])
+                    path_options += rows_sorted
+
+                selected_parent = st.selectbox("Select parent by hierarchy path", path_options, format_func=lambda x: x[1] if isinstance(x, tuple) else str(x))
                 parent_id = None
                 try:
-                    parent_id = selected_parent[0] if selected_parent is not None else None
+                    if isinstance(selected_parent, tuple):
+                        parent_id = selected_parent[0]
+                    else:
+                        parent_id = None
                 except Exception:
                     parent_id = None
 
                 if st.form_submit_button("Add Category"):
-                    if category_name:
+                    if not category_name or not category_name.strip():
+                        st.error("❌ Category name is required")
+                    else:
                         success, result, error = safe_execute(
                             add_category,
-                            category_name, parent_id, description,
+                            category_name.strip(), parent_id, description,
                             error_title="Failed to Add Category",
                             show_ui_error=True
                         )
@@ -53,8 +133,6 @@ def render_page() -> None:
                                     st.rerun()
                                 except Exception:
                                     pass
-                    else:
-                        st.error("❌ Category name is required")
 
         # Display existing categories
         success, categories_df, error = safe_execute(
@@ -65,7 +143,25 @@ def render_page() -> None:
 
         if success and categories_df is not None and not categories_df.empty:
             st.subheader(f"Existing Categories ({len(categories_df)})")
-            st.dataframe(categories_df, use_container_width=True)
+            # Normalize dataframe for Streamlit/pyarrow display to avoid dtype conversion warnings
+            try:
+                display_df = categories_df.copy()
+                # Ensure numeric id columns use pandas nullable Int64 dtype
+                if 'category_id' in display_df.columns:
+                    display_df['category_id'] = pd.to_numeric(display_df['category_id'], errors='coerce').astype('Int64')
+                if 'parent_category_id' in display_df.columns:
+                    display_df['parent_category_id'] = pd.to_numeric(display_df['parent_category_id'], errors='coerce').astype('Int64')
+                # Convert timestamps to string to avoid timezone/pyarrow issues
+                if 'created_at' in display_df.columns:
+                    try:
+                        display_df['created_at'] = display_df['created_at'].astype(str)
+                    except Exception:
+                        pass
+            except Exception:
+                # Fallback to original dataframe if normalization fails
+                display_df = categories_df
+
+            st.dataframe(display_df, use_container_width=True)
         elif success:
             st.info("No categories found. Add some categories to get started.")
 

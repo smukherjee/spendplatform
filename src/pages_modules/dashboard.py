@@ -183,8 +183,12 @@ def render_recent_transactions(df: pd.DataFrame) -> None:
     available_columns = [col for col in display_columns if col in recent_df.columns]
     
     if available_columns:
-        st.dataframe(
-            recent_df[available_columns],
-            use_container_width=True,
-            hide_index=True
-        )
+            try:
+                from src.utils.display import normalize_df_for_display
+                st.dataframe(normalize_df_for_display(recent_df[available_columns]), use_container_width=True)
+            except Exception:
+                st.dataframe(
+                    recent_df[available_columns],
+                    use_container_width=True,
+                    hide_index=True
+                )

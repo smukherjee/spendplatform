@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 from typing import Optional
 from src.utils.db_simple import get_db_connection
+from src.utils.display import normalize_df_for_display
 from src.utils.debug import debug_logger, show_error_block, safe_execute
 
 
@@ -12,31 +13,31 @@ def render_page() -> None:
         debug_logger.debug("Starting vendor management rendering")
         st.title("📦 Vendor Management")
 
-        # Add new vendor form
-        st.subheader("➕ Add New Vendor")
-        with st.form("add_vendor"):
-            vendor_name = st.text_input("Vendor Name")
-            vendor_code = st.text_input("Vendor Code")
-            contact_email = st.text_input("Contact Email")
+        # Add new vendor form inside collapsible area
+        with st.expander("➕ Add New Vendor"):
+            with st.form("add_vendor"):
+                vendor_name = st.text_input("Vendor Name")
+                vendor_code = st.text_input("Vendor Code")
+                contact_email = st.text_input("Contact Email")
 
-            submit_button = st.form_submit_button("Add Vendor")
-            if submit_button:
-                if vendor_name and vendor_name.strip():
-                    success, result, error = safe_execute(
-                        lambda **kwargs: add_vendor(
-                            vendor_name.strip(),
-                            vendor_code.strip() if vendor_code else None,
-                            contact_email.strip() if contact_email else None
+                submit_button = st.form_submit_button("Add Vendor")
+                if submit_button:
+                    if vendor_name and vendor_name.strip():
+                        success, result, error = safe_execute(
+                            lambda **kwargs: add_vendor(
+                                vendor_name.strip(),
+                                vendor_code.strip() if vendor_code else None,
+                                contact_email.strip() if contact_email else None
+                            )
                         )
-                    )
 
-                    if success and result:
-                        st.success(f"✅ Vendor '{vendor_name}' added successfully!")
+                        if success and result:
+                            st.success(f"✅ Vendor '{vendor_name}' added successfully!")
+                        else:
+                            error_msg = str(error) if error else "Failed to add vendor"
+                            st.error(f"❌ Error adding vendor: {error_msg}")
                     else:
-                        error_msg = str(error) if error else "Failed to add vendor"
-                        st.error(f"❌ Error adding vendor: {error_msg}")
-                else:
-                    st.error("❌ Please enter a vendor name")
+                        st.error("❌ Please enter a vendor name")
 
         # Display existing vendors
         success, vendors_df, error = safe_execute(
@@ -47,7 +48,10 @@ def render_page() -> None:
 
         if success and vendors_df is not None and not vendors_df.empty:
             st.subheader(f"Existing Vendors ({len(vendors_df)})")
-            st.dataframe(vendors_df, use_container_width=True)
+            try:
+                st.dataframe(normalize_df_for_display(vendors_df), use_container_width=True)
+            except Exception:
+                st.dataframe(vendors_df, use_container_width=True)
         elif success:
             st.info("No vendors found. Add some vendors to get started.")
 

@@ -40,7 +40,11 @@ def render_page() -> None:
             
             # Preview data
             with st.expander("📋 Data Preview"):
-                st.dataframe(df.head(10))
+                try:
+                    from src.utils.display import normalize_df_for_display
+                    st.dataframe(normalize_df_for_display(df.head(10)))
+                except Exception:
+                    st.dataframe(df.head(10))
             
             # Validation
             debug_logger.debug("Starting data validation")
