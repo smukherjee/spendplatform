@@ -29,12 +29,22 @@ class BaseModel:
         Raises:
             DatabaseError: If database operation fails
         """
+        # Validate table and column names to prevent SQL injection
+        allowed_tables = {
+            'users', 'vendors', 'categories', 'spend_transactions', 
+            'error_logs', 'rules', 'user_settings'
+        }
+        
+        if cls.table_name not in allowed_tables:
+            raise ValueError(f"Invalid table name: {cls.table_name}")
+            
+        if not cls.primary_key.replace('_', '').isalnum():
+            raise ValueError(f"Invalid primary key: {cls.primary_key}")
+            
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                f"SELECT * FROM {cls.table_name} WHERE {cls.primary_key} = ?",
-                (id_value,)
-            )
+            query = f"SELECT * FROM {cls.table_name} WHERE {cls.primary_key} = ?"
+            cursor.execute(query, (id_value,))
             row = cursor.fetchone()
             return cls(**dict(row)) if row else None
 
@@ -44,6 +54,15 @@ class BaseModel:
         Raises:
             DatabaseError: If save operation fails
         """
+        # Validate table name
+        allowed_tables = {
+            'users', 'vendors', 'categories', 'spend_transactions', 
+            'error_logs', 'rules', 'user_settings'
+        }
+        
+        if self.table_name not in allowed_tables:
+            raise ValueError(f"Invalid table name: {self.table_name}")
+            
         with get_db_connection() as conn:
             cursor = conn.cursor()
             
@@ -55,21 +74,15 @@ class BaseModel:
                 # Update existing record
                 set_clause = ", ".join(f"{k} = ?" for k in attrs.keys())
                 values = tuple(attrs.values())
-                cursor.execute(
-                    f"UPDATE {self.table_name} SET {set_clause} "
-                    f"WHERE {self.primary_key} = ?",
-                    values + (getattr(self, self.primary_key),)
-                )
+                query = f"UPDATE {self.table_name} SET {set_clause} WHERE {self.primary_key} = ?"
+                cursor.execute(query, values + (getattr(self, self.primary_key),))
             else:
                 # Insert new record
                 columns = ", ".join(attrs.keys())
                 placeholders = ", ".join("?" * len(attrs))
                 values = tuple(attrs.values())
-                cursor.execute(
-                    f"INSERT INTO {self.table_name} ({columns}) "
-                    f"VALUES ({placeholders})",
-                    values
-                )
+                query = f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders})"
+                cursor.execute(query, values)
             
             conn.commit()
 
@@ -83,12 +96,22 @@ class BaseModel:
         if not hasattr(self, self.primary_key):
             raise NotFoundError(self.table_name, "No primary key")
         
+        # Validate table and column names
+        allowed_tables = {
+            'users', 'vendors', 'categories', 'spend_transactions', 
+            'error_logs', 'rules', 'user_settings'
+        }
+        
+        if self.table_name not in allowed_tables:
+            raise ValueError(f"Invalid table name: {self.table_name}")
+            
+        if not self.primary_key.replace('_', '').isalnum():
+            raise ValueError(f"Invalid primary key: {self.primary_key}")
+            
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                f"DELETE FROM {self.table_name} WHERE {self.primary_key} = ?",
-                (getattr(self, self.primary_key),)
-            )
+            query = f"DELETE FROM {self.table_name} WHERE {self.primary_key} = ?"
+            cursor.execute(query, (getattr(self, self.primary_key),))
             if cursor.rowcount == 0:
                 raise NotFoundError(
                     self.table_name,

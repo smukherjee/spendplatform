@@ -163,18 +163,18 @@ def load_sample_data():
         conn.commit()
         debug_logger.info("✅ Sample data loading completed successfully!")
 
-        # Print summary
-        cursor.execute("SELECT COUNT(*) FROM spend_transactions")
-        transactions_count = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM vendors")
-        vendors_count = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM categories")
-        categories_count = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM error_logs")
-        errors_count = cursor.fetchone()[0]
+        # Print summary with optimized single query
+        summary_query = """
+            SELECT 
+                (SELECT COUNT(*) FROM spend_transactions) as transactions_count,
+                (SELECT COUNT(*) FROM vendors) as vendors_count,
+                (SELECT COUNT(*) FROM categories) as categories_count,
+                (SELECT COUNT(*) FROM error_logs) as errors_count
+        """
+        
+        cursor.execute(summary_query)
+        counts = cursor.fetchone()
+        transactions_count, vendors_count, categories_count, errors_count = counts
 
         debug_logger.info("\n📊 Database Summary:")
         debug_logger.info(f"- Transactions: {transactions_count:,}")

@@ -20,7 +20,9 @@ class User(BaseModel):
         role: str,
         user_id: Optional[int] = None,
         created_at: Optional[str] = None,
-        last_login: Optional[str] = None
+        last_login: Optional[str] = None,
+        is_deleted: Optional[int] = None,
+        **kwargs
     ) -> None:
         """Initialize a user instance.
         
@@ -31,6 +33,8 @@ class User(BaseModel):
             user_id: Optional user ID for existing users
             created_at: Optional creation timestamp
             last_login: Optional last login timestamp
+            is_deleted: Optional soft delete flag
+            **kwargs: Additional keyword arguments (for database compatibility)
         """
         super().__init__()
         self.username = username
@@ -40,6 +44,7 @@ class User(BaseModel):
             self.user_id = user_id
         self.created_at = created_at or datetime.utcnow().isoformat()
         self.last_login = last_login
+        self.is_deleted = is_deleted  # Handle soft delete field
 
     @staticmethod
     def hash_password(password: str) -> str:
@@ -104,6 +109,7 @@ class User(BaseModel):
         """
         with get_db_connection() as conn:
             cursor = conn.cursor()
+            # Safe query - users table and username column are hardcoded
             cursor.execute(
                 "SELECT * FROM users WHERE username = ?",
                 (username,)

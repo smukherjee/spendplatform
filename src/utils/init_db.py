@@ -28,6 +28,9 @@ def init_database(database_path: Optional[str] = None) -> None:
         
         # Create tables
         create_tables(cursor)
+        
+        # Create indexes for performance
+        create_indexes(cursor)
 
         # Create default users
         create_default_users(cursor)
@@ -228,18 +231,56 @@ def create_indexes(cursor: sqlite3.Cursor) -> None:
     """Create database indexes for better performance."""
     
     indexes = [
+        # Spend transactions indexes - most critical for performance
         "CREATE INDEX IF NOT EXISTS idx_transactions_supplier ON spend_transactions(supplier_name)",
         "CREATE INDEX IF NOT EXISTS idx_transactions_date ON spend_transactions(invoice_date)",
         "CREATE INDEX IF NOT EXISTS idx_transactions_region ON spend_transactions(region)",
         "CREATE INDEX IF NOT EXISTS idx_transactions_category ON spend_transactions(category_id)",
+        "CREATE INDEX IF NOT EXISTS idx_transactions_amount ON spend_transactions(item_invoice_value)",
+        "CREATE INDEX IF NOT EXISTS idx_transactions_bu_code ON spend_transactions(bu_code)",
+        "CREATE INDEX IF NOT EXISTS idx_transactions_po_no ON spend_transactions(po_no)",
+        "CREATE INDEX IF NOT EXISTS idx_transactions_material ON spend_transactions(material_code)",
+        
+        # Composite indexes for common query patterns
+        "CREATE INDEX IF NOT EXISTS idx_transactions_date_category ON spend_transactions(invoice_date, category_id)",
+        "CREATE INDEX IF NOT EXISTS idx_transactions_supplier_date ON spend_transactions(supplier_name, invoice_date)",
+        "CREATE INDEX IF NOT EXISTS idx_transactions_region_date ON spend_transactions(region, invoice_date)",
+        
+        # Error logs indexes
         "CREATE INDEX IF NOT EXISTS idx_errors_transaction ON error_logs(transaction_id)",
         "CREATE INDEX IF NOT EXISTS idx_errors_status ON error_logs(status)",
+        "CREATE INDEX IF NOT EXISTS idx_errors_type ON error_logs(error_type)",
+        "CREATE INDEX IF NOT EXISTS idx_errors_created ON error_logs(created_at)",
+        
+        # Vendors indexes
         "CREATE INDEX IF NOT EXISTS idx_vendors_name ON vendors(vendor_name)",
-        "CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_category_id)"
+        "CREATE INDEX IF NOT EXISTS idx_vendors_code ON vendors(vendor_code)",
+        "CREATE INDEX IF NOT EXISTS idx_vendors_email ON vendors(contact_email)",
+        
+        # Categories indexes
+        "CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_category_id)",
+        "CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(category_name)",
+        
+        # Rules indexes
+        "CREATE INDEX IF NOT EXISTS idx_rules_active ON rules(active_flag)",
+        "CREATE INDEX IF NOT EXISTS idx_rules_type ON rules(rule_type)",
+        "CREATE INDEX IF NOT EXISTS idx_rules_created ON rules(created_at)",
+        
+        # Users indexes
+        "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+        "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",
+        
+        # User settings indexes
+        "CREATE INDEX IF NOT EXISTS idx_user_settings_user ON user_settings(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_user_settings_key ON user_settings(setting_key)"
     ]
     
     for index_sql in indexes:
-        cursor.execute(index_sql)
+        try:
+            cursor.execute(index_sql)
+            debug_logger.debug(f"Created index: {index_sql.split(' ON ')[1].split('(')[0]}")
+        except sqlite3.Error as e:
+            debug_logger.warning(f"Failed to create index: {index_sql}", {"error": str(e)})
 
 
 if __name__ == "__main__":

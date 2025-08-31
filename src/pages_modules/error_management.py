@@ -221,19 +221,41 @@ def render_system_health():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             
-            # Get table statistics
-            tables = ['spend_transactions', 'vendors', 'categories', 'error_logs']
-            stats_data = []
+            # Get table statistics with single optimized query
+            query = """
+                SELECT 
+                    'spend_transactions' as table_name, COUNT(*) as count FROM spend_transactions
+                UNION ALL
+                SELECT 'vendors' as table_name, COUNT(*) as count FROM vendors
+                UNION ALL  
+                SELECT 'categories' as table_name, COUNT(*) as count FROM categories
+                UNION ALL
+                SELECT 'error_logs' as table_name, COUNT(*) as count FROM error_logs
+            """
             
-            for table in tables:
-                try:
-                    cursor.execute(f"SELECT COUNT(*) FROM {table}")
-                    count = cursor.fetchone()[0]
-                    stats_data.append({"Table": table, "Row Count": count})
-                except Exception as e:
-                    # Log the exception for diagnostics and continue
-                    debug_logger.exception(f"Failed to get count for table {table}", e)
-                    stats_data.append({"Table": table, "Row Count": "N/A"})
+            try:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                
+                stats_data = []
+                for row in results:
+                    table_name, count = row
+                    stats_data.append({"Table": table_name, "Row Count": count})
+                    
+            except Exception as e:
+                # Fallback to individual queries if UNION fails
+                debug_logger.exception("Failed to execute optimized count query, falling back to individual queries", e)
+                tables = ['spend_transactions', 'vendors', 'categories', 'error_logs']
+                stats_data = []
+                
+                for table in tables:
+                    try:
+                        cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                        count = cursor.fetchone()[0]
+                        stats_data.append({"Table": table, "Row Count": count})
+                    except Exception as e:
+                        debug_logger.exception(f"Failed to get count for table {table}", e)
+                        stats_data.append({"Table": table, "Row Count": "N/A"})
             
             stats_df = pd.DataFrame(stats_data)
             try:

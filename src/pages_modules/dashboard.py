@@ -4,6 +4,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from functools import lru_cache
+import time
 from src.utils.db_simple import get_db_connection
 from src.config import config
 from src.utils.debug import debug_logger, show_error_block, safe_execute
@@ -65,9 +67,12 @@ def render_page() -> None:
         show_error_block("Dashboard Page Error", e)
 
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_dashboard_data() -> pd.DataFrame:
-    """Load transaction data for dashboard."""
+    """Load transaction data for dashboard with caching."""
     debug_logger.debug("Loading dashboard data from database")
+    start_time = time.time()
+    
     try:
         with get_db_connection() as conn:
             query = """
@@ -82,7 +87,13 @@ def load_dashboard_data() -> pd.DataFrame:
                 LIMIT 1000
             """
             df = pd.read_sql_query(query, conn)
-            debug_logger.debug("Dashboard data loaded successfully", {"rows": len(df)})
+            
+            load_time = time.time() - start_time
+            debug_logger.debug("Dashboard data loaded successfully", {
+                "rows": len(df),
+                "load_time": f"{load_time:.3f}s",
+                "cached": True
+            })
             return df
     except Exception as e:
         debug_logger.exception("Error loading dashboard data", e)
