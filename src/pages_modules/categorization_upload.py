@@ -121,9 +121,9 @@ def render_page() -> None:
 
     st.subheader("Preview (first 10 rows)")
     try:
-        st.dataframe(normalize_df_for_display(df.head(10)), use_container_width=True)
+        st.dataframe(normalize_df_for_display(df.head(10)), width='stretch')
     except Exception:
-        st.dataframe(df.head(10), use_container_width=True)
+        st.dataframe(df.head(10), width='stretch')
 
     paths = parse_categorization_df(df)
     unique_paths = build_unique_paths(paths)

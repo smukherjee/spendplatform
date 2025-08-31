@@ -214,7 +214,7 @@ def render_page() -> None:
 
             edited = st.data_editor(
                 df_to_edit,
-                use_container_width=True,
+                width='stretch',
                 num_rows="dynamic",
                 column_config=(column_config if column_config else None),
                 key='users_data_editor'
@@ -237,7 +237,7 @@ def render_page() -> None:
             except Exception:
                 pass
         except Exception:
-            edited = st.data_editor(display_df, use_container_width=True, num_rows="dynamic", key='users_data_editor')
+            edited = st.data_editor(display_df, width='stretch', num_rows="dynamic", key='users_data_editor')
 
         # Validation
         validation_msgs = []

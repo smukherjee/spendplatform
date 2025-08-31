@@ -120,7 +120,7 @@ def render_spend_by_region(df: pd.DataFrame) -> None:
             names='region',
             title="Spend by Region"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def render_top_suppliers(df: pd.DataFrame) -> None:
@@ -133,7 +133,7 @@ def render_top_suppliers(df: pd.DataFrame) -> None:
         orientation='h',
         title="Top 10 Suppliers"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def render_spend_trend(df: pd.DataFrame) -> None:
@@ -149,7 +149,7 @@ def render_spend_trend(df: pd.DataFrame) -> None:
             y='item_invoice_value',
             title="Monthly Spend Trend"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def render_category_breakdown(df: pd.DataFrame) -> None:
@@ -163,7 +163,7 @@ def render_category_breakdown(df: pd.DataFrame) -> None:
             title="Spend by Category"
         )
         fig.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def render_recent_transactions(df: pd.DataFrame) -> None:
@@ -185,10 +185,10 @@ def render_recent_transactions(df: pd.DataFrame) -> None:
     if available_columns:
             try:
                 from src.utils.display import normalize_df_for_display
-                st.dataframe(normalize_df_for_display(recent_df[available_columns]), use_container_width=True)
+                st.dataframe(normalize_df_for_display(recent_df[available_columns]), width='stretch')
             except Exception:
                 st.dataframe(
                     recent_df[available_columns],
-                    use_container_width=True,
+                    width='stretch',
                     hide_index=True
                 )

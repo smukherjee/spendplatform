@@ -113,9 +113,9 @@ def render_vendor_management() -> None:
             debug_logger.debug("Displaying vendors", {"count": len(vendors_df)})
             st.subheader(f"Existing Vendors ({len(vendors_df)})")
             try:
-                st.dataframe(normalize_df_for_display(vendors_df), use_container_width=True)
+                st.dataframe(normalize_df_for_display(vendors_df), width='stretch')
             except Exception:
-                st.dataframe(vendors_df, use_container_width=True)
+                st.dataframe(vendors_df, width='stretch')
         elif success:
             debug_logger.debug("No vendors found")
             st.info("No vendors found. Add some vendors to get started.")
@@ -202,9 +202,9 @@ def render_category_management() -> None:
             debug_logger.debug("Displaying categories", {"count": len(categories_df)})
             st.subheader(f"Existing Categories ({len(categories_df)})")
             try:
-                st.dataframe(normalize_df_for_display(categories_df), use_container_width=True)
+                st.dataframe(normalize_df_for_display(categories_df), width='stretch')
             except Exception:
-                st.dataframe(categories_df, use_container_width=True)
+                st.dataframe(categories_df, width='stretch')
         elif success:
             debug_logger.debug("No categories found")
             st.info("No categories found. Add some categories to get started.")

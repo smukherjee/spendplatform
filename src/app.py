@@ -82,58 +82,58 @@ def sidebar_navigation():
             
             # Navigation buttons based on permissions
             # Dashboard - available to all authenticated users
-            if st.button("🏠 Dashboard", key="nav_dashboard", use_container_width=True):
+            if st.button("🏠 Dashboard", key="nav_dashboard", width='stretch'):
                 st.session_state.selected_page = "dashboard"
                 st.rerun()
             
             # Data Upload
             if permissions.get("can_upload_data", False):
-                if st.button("📤 Upload Data", key="nav_upload", use_container_width=True):
+                if st.button("📤 Upload Data", key="nav_upload", width='stretch'):
                     st.session_state.selected_page = "upload"
                     st.rerun()
             
             # Master Data Management (split into Vendors and Categories)
             if permissions.get("can_manage_master_data", False):
-                if st.button("� Vendors", key="nav_vendors", use_container_width=True):
+                if st.button("� Vendors", key="nav_vendors", width='stretch'):
                     st.session_state.selected_page = "vendors"
                     st.rerun()
-                if st.button("📂 Categories", key="nav_categories", use_container_width=True):
+                if st.button("📂 Categories", key="nav_categories", width='stretch'):
                     st.session_state.selected_page = "categories"
                     st.rerun()
             
             # User Management
             if permissions.get("can_manage_users", False):
-                if st.button("👥 User Management", key="nav_users", use_container_width=True):
+                if st.button("👥 User Management", key="nav_users", width='stretch'):
                     st.session_state.selected_page = "users"
                     st.rerun()
             
             # Rules Management
             if permissions.get("can_manage_rules", False):
-                if st.button("⚙️ Rules", key="nav_rules", use_container_width=True):
+                if st.button("⚙️ Rules", key="nav_rules", width='stretch'):
                     st.session_state.selected_page = "rules"
                     st.rerun()
             
             # Error Resolution
             if permissions.get("can_resolve_errors", False):
-                if st.button("🔧 Error Resolution", key="nav_errors", use_container_width=True):
+                if st.button("🔧 Error Resolution", key="nav_errors", width='stretch'):
                     st.session_state.selected_page = "errors"
                     st.rerun()
             
             # Reports
             if permissions.get("can_view_reports", False):
-                if st.button("📊 Reports", key="nav_reports", use_container_width=True):
+                if st.button("📊 Reports", key="nav_reports", width='stretch'):
                     st.session_state.selected_page = "reports"
                     st.rerun()
 
             # Categorization upload/import
             if permissions.get("can_manage_master_data", False):
-                if st.button("📥 Categorization Upload", key="nav_categorization_upload", use_container_width=True):
+                if st.button("📥 Categorization Upload", key="nav_categorization_upload", width='stretch'):
                     st.session_state.selected_page = "categorization_upload"
                     st.rerun()
             
             # Logout button
             st.markdown("---")
-            if st.button("🚪 Logout", key="logout", use_container_width=True):
+            if st.button("🚪 Logout", key="logout", width='stretch'):
                 auth_service.logout()
                 st.rerun()
                 

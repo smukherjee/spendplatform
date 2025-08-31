@@ -258,7 +258,7 @@ def render_page() -> None:
                     df_to_edit = st.session_state.get('categories_data_editor_df', display_df)
                     edited = st.data_editor(
                         df_to_edit,
-                        use_container_width=True,
+                        width='stretch',
                         num_rows="dynamic",
                         column_config=(column_config if column_config else None),
                         key='categories_data_editor'
@@ -282,7 +282,7 @@ def render_page() -> None:
                     except Exception:
                         pass
                 except Exception:
-                    edited = st.data_editor(display_df, use_container_width=True, num_rows="dynamic", key='categories_data_editor')
+                    edited = st.data_editor(display_df, width='stretch', num_rows="dynamic", key='categories_data_editor')
 
                 # Per-row validation messages: identify rows with problems and show them inline below the editor
                 validation_msgs = []
@@ -488,7 +488,7 @@ def render_page() -> None:
                                     show_error_block("Failed to apply changes", e)
 
             except Exception:
-                st.dataframe(display_df, use_container_width=True)
+                st.dataframe(display_df, width='stretch')
         elif success:
             st.info("No categories found. Add some categories to get started.")
 

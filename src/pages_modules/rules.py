@@ -228,13 +228,13 @@ def render_rule_list():
         try:
             edited = st.data_editor(
                 df_to_edit,
-                use_container_width=True,
+                width='stretch',
                 num_rows="dynamic",
                 column_config=(column_config if column_config else None),
                 key='rules_data_editor'
             )
         except Exception:
-            edited = st.data_editor(display_df, use_container_width=True, num_rows="dynamic", key='rules_data_editor')
+            edited = st.data_editor(display_df, width='stretch', num_rows="dynamic", key='rules_data_editor')
 
         # If user added rows via the editor, move new rows (null rule_id) to top and persist
         try:

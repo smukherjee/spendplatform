@@ -152,7 +152,7 @@ def render_supplier_analysis(df: pd.DataFrame) -> None:
             orientation='h',
             title="Top 10 Suppliers by Spend"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def render_category_analysis(df: pd.DataFrame) -> None:
@@ -168,7 +168,7 @@ def render_category_analysis(df: pd.DataFrame) -> None:
             names='category',
             title="Spend Distribution by Category"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def render_regional_analysis(df: pd.DataFrame) -> None:
@@ -184,7 +184,7 @@ def render_regional_analysis(df: pd.DataFrame) -> None:
             y='item_invoice_value',
             title="Spend by Region"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def render_export_options(df: pd.DataFrame) -> None:

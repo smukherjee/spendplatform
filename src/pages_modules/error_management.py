@@ -103,7 +103,7 @@ def render_data_errors():
         # Display error table
         st.dataframe(
             filtered_df,
-            use_container_width=True,
+            width='stretch',
             column_config={
                 "error_id": "ID",
                 "transaction_id": "Transaction ID",
@@ -237,9 +237,9 @@ def render_system_health():
             
             stats_df = pd.DataFrame(stats_data)
             try:
-                st.dataframe(normalize_df_for_display(stats_df), use_container_width=True)
+                st.dataframe(normalize_df_for_display(stats_df), width='stretch')
             except Exception:
-                st.dataframe(stats_df, use_container_width=True)
+                st.dataframe(stats_df, width='stretch')
             
     except Exception as e:
         st.error(f"Failed to load database statistics: {str(e)}")
@@ -254,9 +254,9 @@ def render_system_health():
     
     activity_df = pd.DataFrame(activity_data)
     try:
-        st.dataframe(normalize_df_for_display(activity_df), use_container_width=True)
+        st.dataframe(normalize_df_for_display(activity_df), width='stretch')
     except Exception:
-        st.dataframe(activity_df, use_container_width=True)
+        st.dataframe(activity_df, width='stretch')
 
 
 def render_debug_settings():
