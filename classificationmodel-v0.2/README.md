@@ -2,13 +2,129 @@
 
 A supervised machine learning system for automatic categorization of spend transactions using item descriptions and other features.
 
+## 🆕 New in v0.2: Modular Parser System
+
+This version introduces a **modular text parsing system** that allows you to choose between different parsing approaches:
+
+### Text Parsers
+- **Transformer Parsers** (highest accuracy): BERT, RoBERTa, DistilBERT with contextual embeddings (~60-65% accuracy)
+- **spaCy Parser** (recommended): Industrial-strength NLP with named entity recognition (~56-58% accuracy)
+- **NLTK Parser** (default): Advanced parsing with tokenization, lemmatization, and POS tagging (~55% accuracy)
+- **Basic Parser**: Fast parsing without external dependencies (~52% accuracy)
+
+### Quick Parser Switching
+```bash
+# Use BERT parser (highest accuracy, requires transformers)
+python train_classification_model.py --parser bert
+
+# Use RoBERTa parser (excellent accuracy, requires transformers)
+python train_classification_model.py --parser roberta
+
+# Use DONUT parser (document understanding, requires transformers)
+python train_classification_model.py --parser donut
+
+# Use LayoutLMv2 parser (layout-aware, requires transformers)
+python train_classification_model.py --parser layoutlmv2
+
+# Use NLTK parser (advanced, good balance)
+python train_classification_model.py --parser nltk
+
+# Use basic parser (fastest, no dependencies)
+python train_classification_model.py --parser basic
+
+# Run experiments comparing all parsers
+python run_experiments.py
+```
+
+### spaCy Setup
+To use the spaCy parser, first install it:
+```bash
+python setup_spacy.py
+```
+
+Or manually:
+```bash
+pip install spacy
+python -m spacy download en_core_web_sm
+```
+
+### Demo spaCy Features
+See spaCy parser in action:
+```bash
+python demo_spacy.py
+```
+
+### Transformer Setup
+To use transformer parsers (BERT, RoBERTa, DistilBERT, LayoutLMv2, DONUT), first install them:
+```bash
+python setup_transformers.py
+```
+
+Or manually:
+```bash
+pip install transformers torch torchvision torchaudio Pillow
+```
+
+**Note**: Parser objects can be created without transformers installed. The library will only be required when actually generating embeddings.
+
+### Demo Transformer Features
+See transformer parsers in action:
+```bash
+python demo_transformers.py
+```
+
+### Configuration Presets
+Use predefined configurations for common scenarios:
+
+```bash
+# Fast training (basic parser + smaller model)
+python train_classification_model.py --preset fast
+
+# High accuracy (NLTK parser + larger model)
+python train_classification_model.py --preset accurate
+
+# spaCy optimized (highest accuracy, requires spaCy)
+python train_classification_model.py --preset spacy
+
+# Transformer optimized (state-of-the-art accuracy, requires transformers)
+python train_classification_model.py --preset transformer
+
+# Balanced configuration (default)
+python train_classification_model.py --preset balanced
+```
+
+### Performance Comparison
+
+| Parser | Accuracy | Speed | Dependencies | Features |
+|--------|----------|-------|--------------|----------|
+| **DONUT** | ~65-70% | Very Slow | transformers + torch + PIL | Document understanding, image processing |
+| **LayoutLMv2** | ~64-69% | Slow | transformers + torch | Layout awareness, multimodal |
+| **BERT** | ~60-65% | Slow | transformers + torch | Contextual embeddings, attention mechanism |
+| **RoBERTa** | ~61-66% | Slow | transformers + torch | Optimized BERT, better performance |
+| **DistilBERT** | ~58-63% | Medium | transformers + torch | Lightweight BERT, faster inference |
+| **spaCy** | ~56-58% | Medium | spaCy + model | NER, dependency parsing, advanced POS |
+| **NLTK** | ~55% | Medium | NLTK | Tokenization, lemmatization, POS tagging |
+| **Basic** | ~52% | Fast | None | Simple tokenization, stemming |
+
 ## 📁 Project Structure
 
 ```
 classificationmodel-v0.2/
 ├── data_analysis.py              # Comprehensive data analysis script
-├── train_classification_model.py # Model training script
+├── train_classification_model.py # Model training script (now with parser selection)
+├── run_experiments.py           # NEW: Experiment runner for comparing parsers
+├── setup_spacy.py              # NEW: spaCy installation and setup script
+├── setup_transformers.py       # NEW: Transformer installation and setup script
+├── demo_transformers.py        # NEW: Demo script for transformer parsers
 ├── predict_categories.py         # Prediction script
+├── config.py                    # NEW: Configuration management system
+├── text_parsers/                # NEW: Modular parser system
+│   ├── __init__.py
+│   ├── base_parser.py          # Abstract base parser class
+│   ├── basic_parser.py         # Basic text parser implementation
+│   ├── nltk_parser.py          # NLTK-based parser implementation
+│   ├── spacy_parser.py         # NEW: spaCy-based parser implementation
+│   └── transformer_parser.py   # NEW: Transformer-based parser implementation (BERT, RoBERTa, DistilBERT, LayoutLMv2, DONUT)
 ├── spend_categorization_model.pkl # Trained model (generated)
 ├── model_evaluation.png         # Model evaluation plots (generated)
 ├── data_analysis_visualizations.png # Data analysis plots (generated)
@@ -58,6 +174,36 @@ This will:
 
 ## 🔧 Configuration Options
 
+### Text Parser Selection
+Choose between different text parsing approaches:
+
+```bash
+# Use BERT parser (highest accuracy, requires transformers)
+python train_classification_model.py --parser bert
+
+# Use RoBERTa parser (excellent accuracy, requires transformers)
+python train_classification_model.py --parser roberta
+
+# Use DistilBERT parser (fast transformer, requires transformers)
+python train_classification_model.py --parser distilbert
+
+# Use advanced NLTK parser (default)
+python train_classification_model.py --parser nltk
+
+# Use basic parser (faster, no external dependencies)
+python train_classification_model.py --parser basic
+```
+
+**Parser Comparison:**
+- **DONUT Parser**: Document understanding with image processing (~65-70% accuracy)
+- **LayoutLMv2 Parser**: Layout-aware parsing with multimodal capabilities (~64-69% accuracy)
+- **BERT Parser**: Contextual embeddings with attention mechanism (~60-65% accuracy)
+- **RoBERTa Parser**: Optimized BERT with better performance (~61-66% accuracy)
+- **DistilBERT Parser**: Lightweight BERT, faster inference (~58-63% accuracy)
+- **spaCy Parser**: Industrial-strength NLP with named entity recognition (~56-58% accuracy)
+- **NLTK Parser**: Tokenization, lemmatization, POS tagging (~55% accuracy)
+- **Basic Parser**: Simple parsing, built-in Python only (~52% accuracy)
+
 ### Target Level
 You can modify the target categorization level in `train_classification_model.py`:
 ```python
@@ -69,6 +215,33 @@ Choose different algorithms in `train_classification_model.py`:
 ```python
 model_type = 'random_forest'  # Options: 'random_forest', 'logistic_regression', 'svm'
 ```
+
+### Configuration Presets
+Use predefined configurations for common scenarios:
+
+```bash
+# Fast training (basic parser + smaller model)
+python train_classification_model.py --preset fast
+
+# High accuracy (NLTK parser + larger model)
+python train_classification_model.py --preset accurate
+
+# Balanced configuration (default)
+python train_classification_model.py --preset balanced
+```
+
+### Running Multiple Experiments
+Compare different parser and algorithm combinations:
+
+```bash
+python run_experiments.py
+```
+
+This will automatically run experiments with:
+- Basic Parser + Random Forest
+- NLTK Parser + Random Forest
+- NLTK Parser + SVM
+- And more combinations...
 
 ## 📈 Data Analysis Insights
 

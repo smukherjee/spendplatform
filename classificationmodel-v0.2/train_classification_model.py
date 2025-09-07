@@ -24,12 +24,16 @@ import pickle
 import os
 from pathlib import Path
 
+# Import text parsers and configuration
+from text_parsers import BasicTextParser, NLTKTextParser
+from config import ModelConfig, get_config_from_args
+
 warnings.filterwarnings('ignore')
 
 class MultiLevelSpendCategorizationModel:
     """Multi-level supervised learning model for spend transaction categorization"""
 
-    def __init__(self, target_levels=['Category L2']):
+    def __init__(self, target_levels=['Category L2'], text_parser=None, config=None):
         self.target_levels = target_levels
         self.label_encoders = {}
         self.vectorizer = None
@@ -37,6 +41,15 @@ class MultiLevelSpendCategorizationModel:
         self.models = {}
         self.feature_names = None
         self.training_data = None
+        self.config = config  # Store config for TF-IDF settings
+
+        # Initialize text parser
+        if text_parser is None:
+            self.text_parser = NLTKTextParser()  # Default to NLTK parser
+        else:
+            self.text_parser = text_parser
+
+        print(f"✅ Using text parser: {self.text_parser.get_parser_info()['name']}")
 
     def load_preprocessed_data(self, train_file_path, test_file_path):
         """Load preprocessed train and test data"""
@@ -81,20 +94,23 @@ class MultiLevelSpendCategorizationModel:
         return self.train_data, self.test_data
 
     def preprocess_text(self, text):
-        """Preprocess text data for feature extraction"""
-        if not isinstance(text, str) or text == '':
-            return ''
+        """Text preprocessing using the configured parser"""
+        return self.text_parser.preprocess_text(text)
 
-        # Convert to lowercase
-        text = text.lower()
+    def extract_pos_features(self, df, use_pos=True):
+        """Extract POS-based features using the configured parser"""
+        print("Extracting POS-based features...")
 
-        # Remove special characters but keep spaces and alphanumeric
-        text = re.sub(r'[^\w\s]', ' ', text)
+        # Get processed descriptions
+        processed_texts = df['processed_description'].tolist()
 
-        # Remove extra whitespace
-        text = re.sub(r'\s+', ' ', text)
+        # Extract POS features using the parser
+        pos_features_list = self.text_parser.extract_pos_features(processed_texts)
 
-        return text.strip()
+        # Convert to DataFrame
+        pos_df = pd.DataFrame(pos_features_list)
+        print(f"✅ Extracted POS features: {pos_df.shape[1]} features")
+        return pos_df
 
     def extract_features(self, df, is_training=True):
         """Extract features from the dataset"""
@@ -106,14 +122,23 @@ class MultiLevelSpendCategorizationModel:
         # Apply text preprocessing
         df_processed['processed_description'] = df_processed['Item_Descripton'].apply(self.preprocess_text)
 
-        # Text features using TF-IDF
+        # Text features using TF-IDF with enhanced parameters
         if is_training:
+            # Use config values if available, otherwise use defaults
+            max_features = self.config.tfidf_max_features if self.config else 1500
+            ngram_range = self.config.tfidf_ngram_range if self.config else (1, 3)
+            min_df = self.config.tfidf_min_df if self.config else 2
+            max_df = self.config.tfidf_max_df if self.config else 0.95
+
             self.vectorizer = TfidfVectorizer(
-                max_features=1000,
-                stop_words='english',
-                ngram_range=(1, 2),
-                min_df=2,
-                max_df=0.9
+                max_features=max_features,
+                stop_words=None,    # We already removed stopwords in preprocessing
+                ngram_range=ngram_range,
+                min_df=min_df,
+                max_df=max_df,
+                sublinear_tf=True, # Apply sublinear scaling
+                use_idf=True,
+                smooth_idf=True
             )
             text_features = self.vectorizer.fit_transform(df_processed['processed_description'])
         else:
@@ -134,8 +159,11 @@ class MultiLevelSpendCategorizationModel:
             'has_symbols': df_processed['Item_Descripton'].str.contains(r'[^\w\s]').astype(int)
         }, index=df_processed.index)
 
+        # POS-based features (using simplified version for speed)
+        pos_features = self.extract_pos_features(df_processed, use_pos=True)
+
         # Combine all features
-        X = pd.concat([text_df, length_features], axis=1)
+        X = pd.concat([text_df, length_features, pos_features], axis=1)
 
         # Store feature names
         if is_training:
@@ -170,13 +198,21 @@ class MultiLevelSpendCategorizationModel:
         print(f"Training {model_type} model...")
 
         if model_type == 'random_forest':
+            # Use config values if available, otherwise use defaults
+            n_estimators = self.config.rf_n_estimators if self.config else 200
+            max_depth = self.config.rf_max_depth if self.config else 15
+            min_samples_split = self.config.rf_min_samples_split if self.config else 5
+            min_samples_leaf = self.config.rf_min_samples_leaf if self.config else 2
+
             self.model = RandomForestClassifier(
-                n_estimators=100,
-                max_depth=10,
-                min_samples_split=5,
-                min_samples_leaf=2,
+                n_estimators=n_estimators,
+                max_depth=max_depth,
+                min_samples_split=min_samples_split,
+                min_samples_leaf=min_samples_leaf,
+                max_features='sqrt',   # Added feature selection
                 random_state=42,
-                n_jobs=-1
+                n_jobs=-1,
+                class_weight='balanced'  # Handle imbalanced classes
             )
         elif model_type == 'logistic_regression':
             self.model = LogisticRegression(
@@ -268,7 +304,9 @@ class MultiLevelSpendCategorizationModel:
             'label_encoders': self.label_encoders,
             'feature_names': self.feature_names,
             'target_levels': self.target_levels,
-            'scaler': self.scaler
+            'scaler': self.scaler,
+            'text_parser_config': self.text_parser.get_parser_info(),
+            'config': self.config.__dict__ if self.config else None
         }
 
         with open(filepath, 'wb') as f:
@@ -288,7 +326,39 @@ class MultiLevelSpendCategorizationModel:
         self.target_levels = model_data['target_levels']
         self.scaler = model_data['scaler']
 
+        # Recreate config if available
+        if 'config' in model_data and model_data['config']:
+            self.config = ModelConfig()
+            for key, value in model_data['config'].items():
+                if hasattr(self.config, key):
+                    setattr(self.config, key, value)
+        else:
+            self.config = None
+
+        # Recreate text parser from config
+        if 'text_parser_config' in model_data:
+            parser_config = model_data['text_parser_config']
+            parser_type = parser_config.get('type', 'NLTKTextParser')
+            if parser_type == 'NLTKTextParser':
+                self.text_parser = NLTKTextParser(parser_config.get('config', {}))
+            elif parser_type == 'BasicTextParser':
+                self.text_parser = BasicTextParser(parser_config.get('config', {}))
+            elif parser_type == 'SpacyTextParser':
+                try:
+                    from text_parsers import SpacyTextParser
+                    self.text_parser = SpacyTextParser(parser_config.get('config', {}))
+                except ImportError:
+                    print("⚠️ spaCy not available, falling back to NLTK parser")
+                    self.text_parser = NLTKTextParser()
+            else:
+                # Fallback to NLTK parser
+                self.text_parser = NLTKTextParser()
+        else:
+            # Backward compatibility - use NLTK parser
+            self.text_parser = NLTKTextParser()
+
         print(f"✅ Model loaded from {filepath}")
+        print(f"✅ Using text parser: {self.text_parser.get_parser_info()['name']}")
 
     def create_evaluation_plots(self, y_true, y_pred, save_path='model_evaluation.png'):
         """Create evaluation plots"""
@@ -353,19 +423,23 @@ def main():
     print("SPEND PLATFORM CATEGORIZATION MODEL TRAINING")
     print("="*80)
 
-    # Configuration - Use preprocessed data
-    train_file = 'preprocessed_data/train_data.xlsx'
-    test_file = 'preprocessed_data/test_data.xlsx'
-    target_level = 'Category L2'  # Can be L1, L2, L3, L4, or L5
-    model_type = 'random_forest'  # 'random_forest', 'logistic_regression', or 'svm'
-    model_save_path = 'spend_categorization_model.pkl'
+    # Get configuration
+    config = get_config_from_args()
+    config.print_config()
+
+    # Initialize text parser from config
+    text_parser = config.get_text_parser()
 
     # Initialize model
-    print(f"Initializing model for target level: {target_level}")
-    model = MultiLevelSpendCategorizationModel(target_levels=[target_level])
+    print(f"Initializing model for target level: {config.target_level}")
+    model = MultiLevelSpendCategorizationModel(
+        target_levels=[config.target_level],
+        text_parser=text_parser,
+        config=config
+    )
 
     # Load preprocessed train and test data
-    train_data, test_data = model.load_preprocessed_data(train_file, test_file)
+    train_data, test_data = model.load_preprocessed_data(config.train_file, config.test_file)
 
     # Extract features and prepare labels
     print("\nPreparing training data...")
@@ -377,7 +451,7 @@ def main():
     y_test = model.prepare_labels(test_data, is_training=False)
 
     # Train model
-    model.train_model(X_train, y_train, model_type=model_type)
+    model.train_model(X_train, y_train, model_type=config.model_type)
 
     # Evaluate model
     evaluation_results = model.evaluate_model(X_test, y_test)
@@ -386,7 +460,7 @@ def main():
     model.create_evaluation_plots(y_test, evaluation_results['predictions'])
 
     # Save model
-    model.save_model(model_save_path)
+    model.save_model(config.model_save_path)
 
     # Make predictions on test data to demonstrate
     print("\n" + "="*60)
@@ -399,7 +473,7 @@ def main():
     print("\nSample Predictions:")
     sample_size = min(10, len(test_data))
     for i in range(sample_size):
-        true_cat = test_data.iloc[i][target_level]
+        true_cat = test_data.iloc[i][config.target_level]
         pred_cat = predictions[i]
         conf = confidences[i]
         desc = test_data.iloc[i]['Item_Descripton'][:50] + "..."
@@ -413,7 +487,7 @@ def main():
     print("="*40)
 
     # Get category names from label encoder
-    category_names = model.label_encoders[target_level].classes_
+    category_names = model.label_encoders[config.target_level].classes_
 
     print("Category Performance:")
     for i, category in enumerate(category_names):
@@ -434,7 +508,7 @@ def main():
     print(f"  • Accuracy: {evaluation_results['accuracy']:.2%}")
     print(f"  • CV Accuracy: {evaluation_results['cv_accuracy']:.2%} ± {evaluation_results['cv_std']:.2%}")
     print("\n📁 Files Generated:")
-    print(f"  • Model: {model_save_path}")
+    print(f"  • Model: {config.model_save_path}")
     print("  • Evaluation plots: model_evaluation.png")
     print("\n🎯 Ready for production use!")
 
