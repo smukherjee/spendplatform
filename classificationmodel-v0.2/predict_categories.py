@@ -28,39 +28,48 @@ class MultiLevelModelPredictor:
         if model_path and parser_type:
             raise ValueError("Cannot specify both model_path and parser_type")
         elif not model_path and not parser_type:
-            # Default to NLTK parser
-            parser_type = 'nltk'
+            # Default to basic parser
+            parser_type = 'basic'
 
         if parser_type:
             config = ModelConfig()
             self.model_path = config.get_model_path_for_parser(parser_type)
+            self.parser_type = parser_type
         else:
-            self.model_path = model_path or 'spend_categorization_model_nltk.pkl'  # Default fallback
+            self.model_path = model_path
+            self.parser_type = None
+
+        if not self.model_path:
+            raise ValueError("Either model_path or parser_type must be provided")
 
         self.model = None
-        self.parser_type = parser_type
+        self.parser = None  # Will be set when model is loaded
         self.load_model()
 
     def load_model(self):
         """Load the trained multi-level model"""
-        if not os.path.exists(self.model_path):
+        if not self.model_path or not os.path.exists(self.model_path):
+            error_msg = f"Model file not found: {self.model_path}"
             if self.parser_type:
-                raise FileNotFoundError(
-                    f"Model file not found for parser '{self.parser_type}': {self.model_path}\n"
-                    f"Make sure to train a model with this parser first using:\n"
-                    f"python train_classification_model.py --parser {self.parser_type}"
-                )
-            else:
-                raise FileNotFoundError(f"Model file not found: {self.model_path}")
+                error_msg += f"\nMake sure to train a model with this parser first using:\n"
+                error_msg += f"python train_classification_model.py --parser {self.parser_type}"
+            raise FileNotFoundError(error_msg)
 
         print(f"Loading multi-level model from {self.model_path}...")
         with open(self.model_path, 'rb') as f:
             model_data = pickle.load(f)
 
+        # Extract parser configuration from the model
+        text_parser_config = model_data.get('text_parser_config', {})
+        parser_type = text_parser_config.get('type', 'BasicTextParser')
+
+        # Create the appropriate parser based on the stored configuration
+        self.parser = self._create_parser_from_config(text_parser_config)
+
         # Create a simple object to hold model components
         class MultiLevelModelContainer:
             def __init__(self, model_data):
-                self.models = model_data['models']
+                self.models = model_data['model']  # Note: saved as 'model' not 'models'
                 self.vectorizer = model_data['vectorizer']
                 self.label_encoders = model_data['label_encoders']
                 self.feature_names = model_data['feature_names']
@@ -69,6 +78,46 @@ class MultiLevelModelPredictor:
 
         self.model = MultiLevelModelContainer(model_data)
         print("✅ Multi-level model loaded successfully")
+
+    def _create_parser_from_config(self, config):
+        """Create parser instance from stored configuration"""
+        from config import ModelConfig
+        from text_parsers import BasicTextParser, NLTKTextParser
+
+        parser_type = config.get('type', 'BasicTextParser')
+
+        if parser_type == 'BasicTextParser':
+            return BasicTextParser()
+        elif parser_type == 'NLTKTextParser':
+            return NLTKTextParser()
+        elif parser_type == 'SpacyTextParser':
+            try:
+                from text_parsers import SpacyTextParser
+                spacy_config = config.get('config', {})
+                return SpacyTextParser(spacy_config)
+            except ImportError:
+                print("⚠️ spaCy not available, falling back to NLTK")
+                return NLTKTextParser()
+        elif parser_type in ['BERTTextParser', 'RoBERTaTextParser', 'DistilBERTTextParser', 'LayoutLMv2TextParser', 'DONUTTextParser']:
+            try:
+                from text_parsers import BERTTextParser, RoBERTaTextParser, DistilBERTTextParser, LayoutLMv2TextParser, DONUTTextParser
+                transformer_config = config.get('config', {})
+                if parser_type == 'BERTTextParser':
+                    return BERTTextParser(transformer_config)
+                elif parser_type == 'RoBERTaTextParser':
+                    return RoBERTaTextParser(transformer_config)
+                elif parser_type == 'DistilBERTTextParser':
+                    return DistilBERTTextParser(transformer_config)
+                elif parser_type == 'LayoutLMv2TextParser':
+                    return LayoutLMv2TextParser(transformer_config)
+                elif parser_type == 'DONUTTextParser':
+                    return DONUTTextParser(transformer_config)
+            except ImportError:
+                print("⚠️ Transformers not available, falling back to NLTK")
+                return NLTKTextParser()
+        else:
+            print(f"⚠️ Unknown parser type '{parser_type}', using Basic parser")
+            return BasicTextParser()
 
     def preprocess_text(self, text):
         """Preprocess text data for feature extraction"""
@@ -88,7 +137,7 @@ class MultiLevelModelPredictor:
         return text.strip()
 
     def extract_features(self, df):
-        """Extract features from new data"""
+        """Extract features from new data matching the model's training features"""
         if self.model is None:
             raise ValueError("Model not loaded")
 
@@ -97,14 +146,26 @@ class MultiLevelModelPredictor:
         df_processed = df.copy()
         df_processed = df_processed.reset_index(drop=True)
 
-        # Ensure required columns exist
-        if 'Item_Descripton' not in df_processed.columns:
-            if 'Description' in df_processed.columns:
-                df_processed['Item_Descripton'] = df_processed['Description']
-            elif 'Descripton' in df_processed.columns:
-                df_processed['Item_Descripton'] = df_processed['Descripton']
+        # Ensure required columns exist - try multiple possible column names
+        description_col = None
+        possible_cols = ['Item_Descripton', 'Description', 'Descripton', 'Order description',
+                        'INV_ITEM_DESC', 'Material Item Name', 'TABLE_DESC']
+
+        for col in possible_cols:
+            if col in df_processed.columns:
+                description_col = col
+                break
+
+        if description_col is None:
+            available_cols = [col for col in df_processed.columns if 'desc' in col.lower() or 'name' in col.lower()]
+            if available_cols:
+                description_col = available_cols[0]
+                print(f"Using column '{description_col}' as description column")
             else:
-                raise ValueError("Data must contain 'Item_Descripton', 'Description', or 'Descripton' column")
+                raise ValueError(f"Data must contain a description column. Available columns: {list(df_processed.columns)}")
+
+        # Use the found description column
+        df_processed['Item_Descripton'] = df_processed[description_col]
 
         # Apply text preprocessing
         df_processed['processed_description'] = df_processed['Item_Descripton'].apply(self.preprocess_text)
@@ -116,17 +177,49 @@ class MultiLevelModelPredictor:
         text_feature_names = [f'text_{i}' for i in range(text_features.shape[1])]
         text_df = pd.DataFrame(text_features.toarray(), columns=text_feature_names, index=df_processed.index)  # type: ignore
 
-        # Length-based features
-        length_features = pd.DataFrame({
-            'desc_length': df_processed['Item_Descripton'].str.len(),
-            'word_count': df_processed['Item_Descripton'].str.split().str.len(),
-            'unique_words': df_processed['processed_description'].apply(lambda x: len(set(x.split()))),
-            'has_numbers': df_processed['Item_Descripton'].str.contains(r'\d').astype(int),
-            'has_symbols': df_processed['Item_Descripton'].str.contains(r'[^\w\s]').astype(int)
-        }, index=df_processed.index)
+        # Get the expected feature names from the model
+        expected_features = self.model.feature_names
 
-        # Combine all features
-        X = pd.concat([text_df, length_features], axis=1)
+        # Create a DataFrame with all expected features, initialized to 0
+        X = pd.DataFrame(0.0, index=df_processed.index, columns=expected_features)
+
+        # Fill in the text features
+        for col in text_df.columns:
+            if col in X.columns:
+                X[col] = text_df[col]
+
+        # Add length-based features if expected
+        length_feature_cols = ['desc_length', 'word_count', 'unique_words', 'has_numbers', 'has_symbols']
+        for col in length_feature_cols:
+            if col in expected_features:
+                if col == 'desc_length':
+                    X[col] = df_processed['Item_Descripton'].str.len()
+                elif col == 'word_count':
+                    X[col] = df_processed['Item_Descripton'].str.split().str.len()
+                elif col == 'unique_words':
+                    X[col] = df_processed['processed_description'].apply(lambda x: len(set(x.split())))
+                elif col == 'has_numbers':
+                    X[col] = df_processed['Item_Descripton'].str.contains(r'\d').astype(int)
+                elif col == 'has_symbols':
+                    X[col] = df_processed['Item_Descripton'].str.contains(r'[^\w\s]').astype(int)
+
+        # Add POS-based features if expected
+        pos_feature_cols = ['noun_count', 'verb_count', 'adj_count', 'adv_count', 'pron_count', 'total_tokens',
+                           'avg_token_length', 'has_capitals', 'sentence_count', 'entity_count']
+        pos_cols_present = [col for col in pos_feature_cols if col in expected_features]
+
+        if pos_cols_present:
+            print("Extracting POS-based features...")
+            if self.parser is None:
+                raise ValueError("Parser not initialized")
+            pos_features_list = self.parser.extract_pos_features(df_processed['processed_description'].tolist())
+            pos_df = pd.DataFrame(pos_features_list, index=df_processed.index)
+
+            # Fill in POS features that are expected
+            for col in pos_cols_present:
+                if col in pos_df.columns:
+                    X[col] = pos_df[col]
+            print(f"✅ Extracted POS features: {len(pos_cols_present)} features")
 
         print(f"✅ Extracted {X.shape[1]} features from {X.shape[0]} samples")
         return X
@@ -148,15 +241,22 @@ class MultiLevelModelPredictor:
         for level in self.model.target_levels:
             print(f"Predicting {level}...")
 
-            # Make predictions
-            predictions_encoded = self.model.models[level].predict(X)
+            # Make predictions - handle both single model and multi-model cases
+            if isinstance(self.model.models, dict):
+                # Multi-level model case
+                model = self.model.models[level]
+            else:
+                # Single-level model case
+                model = self.model.models
+
+            predictions_encoded = model.predict(X)
 
             # Decode predictions
             predictions[level] = self.model.label_encoders[level].inverse_transform(predictions_encoded)
 
             # Get prediction probabilities
-            if hasattr(self.model.models[level], 'predict_proba'):
-                probabilities = self.model.models[level].predict_proba(X)
+            if hasattr(model, 'predict_proba'):
+                probabilities = model.predict_proba(X)
                 confidences[level] = np.max(probabilities, axis=1)
             else:
                 confidences[level] = np.ones(len(predictions[level])) * 0.5  # Default confidence

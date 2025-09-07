@@ -1,0 +1,26 @@
+
+SPEND PLATFORM CATEGORIZATION PIPELINE - EXECUTION REPORT
+================================================================================
+Execution Date: 2025-09-07 14:28:56
+Pipeline ID: 20250907_142853
+
+PIPELINE STEPS SUMMARY:
+================================================================================
+
+DATA_ANALYSIS: ❌ FAILED
+
+OVERALL STATUS: ❌ SOME STEPS FAILED
+
+DETAILED RESULTS:
+================================================================================
+
+DATA_ANALYSIS:
+----------------------------------------
+Status: FAILED
+Error: Traceback (most recent call last):
+  File "/Users/sujoymukherjee/code/spendplatform/classificationmodel-v0.2/temp_analysis.py", line 19, in <module>
+    print(f"✅ Moved visualization to: {self.run_id}/data_analysis_visualizations.png")
+                                        ^^^^
+NameError: name 'self' is not defined
+...
+

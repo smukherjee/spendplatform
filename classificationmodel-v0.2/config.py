@@ -3,7 +3,9 @@ Configuration file for Spend Platform Categorization Model
 Allows easy switching between different parsers and algorithms
 """
 
+from typing import Optional, Any, Dict
 from text_parsers import BasicTextParser, NLTKTextParser
+from text_parsers.base_parser import BaseTextParser
 
 # Try to import spaCy parser
 try:
@@ -28,6 +30,7 @@ except ImportError:
     DistilBERTTextParser = None
     LayoutLMv2TextParser = None
     DONUTTextParser = None
+    TRANSFORMERS_AVAILABLE = False
     TRANSFORMERS_AVAILABLE = False
 
 
@@ -71,8 +74,12 @@ class ModelConfig:
         # Model settings
         self.target_level = 'Category L2'  # Can be L1, L2, L3, L4, or L5
         self.model_type = 'random_forest'  # 'random_forest', 'logistic_regression', or 'svm'
-        # Generate parser-specific model file name
-        self.model_save_path = f'spend_categorization_model_{self.text_parser_type}.pkl'
+        # Model save path will be generated dynamically based on parser type
+
+    @property
+    def model_save_path(self):
+        """Generate parser-specific model file name dynamically"""
+        return f'spend_categorization_model_{self.text_parser_type}.pkl'
 
     def get_model_path_for_parser(self, parser_type):
         """Get the model file path for a specific parser type"""
@@ -115,7 +122,7 @@ class ModelConfig:
         self.rf_min_samples_split = 5
         self.rf_min_samples_leaf = 2
 
-    def get_text_parser(self):
+    def get_text_parser(self) -> 'BaseTextParser':
         """Get the configured text parser"""
         if self.text_parser_type.lower() == 'basic':
             return BasicTextParser()
@@ -144,6 +151,13 @@ class ModelConfig:
                 print("Falling back to NLTK parser...")
                 return NLTKTextParser()
             else:
+                # Type guard: ensure transformer classes are available
+                assert BERTTextParser is not None, "BERTTextParser should be available when TRANSFORMERS_AVAILABLE is True"
+                assert RoBERTaTextParser is not None, "RoBERTaTextParser should be available when TRANSFORMERS_AVAILABLE is True"
+                assert DistilBERTTextParser is not None, "DistilBERTTextParser should be available when TRANSFORMERS_AVAILABLE is True"
+                assert LayoutLMv2TextParser is not None, "LayoutLMv2TextParser should be available when TRANSFORMERS_AVAILABLE is True"
+                assert DONUTTextParser is not None, "DONUTTextParser should be available when TRANSFORMERS_AVAILABLE is True"
+
                 # Create transformer config
                 transformer_config = {
                     'model_name': self.transformer_model_name,
@@ -165,6 +179,9 @@ class ModelConfig:
         else:
             print(f"⚠️ Unknown parser type '{self.text_parser_type}', using NLTK parser")
             return NLTKTextParser()
+
+        # This should never be reached, but ensures type safety
+        return NLTKTextParser()
 
     def print_config(self):
         """Print current configuration"""
@@ -219,6 +236,66 @@ class ConfigPresets:
         config.tfidf_max_features = 2000
         config.rf_n_estimators = 300
         config.rf_max_depth = 20
+        return config
+
+    @staticmethod
+    def bert_optimized():
+        """Configuration optimized for BERT parser"""
+        config = ModelConfig()
+        config.text_parser_type = 'bert'
+        config.transformer_model_name = 'bert-base-uncased'
+        config.transformer_max_length = 128
+        config.tfidf_max_features = 2000
+        config.rf_n_estimators = 200
+        config.rf_max_depth = 15
+        return config
+
+    @staticmethod
+    def roberta_optimized():
+        """Configuration optimized for RoBERTa parser"""
+        config = ModelConfig()
+        config.text_parser_type = 'roberta'
+        config.transformer_model_name = 'roberta-base'
+        config.transformer_max_length = 128
+        config.tfidf_max_features = 2000
+        config.rf_n_estimators = 200
+        config.rf_max_depth = 15
+        return config
+
+    @staticmethod
+    def distilbert_fast():
+        """Fast configuration using DistilBERT"""
+        config = ModelConfig()
+        config.text_parser_type = 'distilbert'
+        config.transformer_model_name = 'distilbert-base-uncased'
+        config.transformer_max_length = 64  # Shorter for speed
+        config.tfidf_max_features = 1000
+        config.rf_n_estimators = 100
+        config.rf_max_depth = 10
+        return config
+
+    @staticmethod
+    def layoutlmv2_optimized():
+        """Configuration optimized for LayoutLMv2 parser"""
+        config = ModelConfig()
+        config.text_parser_type = 'layoutlmv2'
+        config.transformer_model_name = 'microsoft/layoutlmv2-base-uncased'
+        config.transformer_max_length = 128
+        config.tfidf_max_features = 2000
+        config.rf_n_estimators = 200
+        config.rf_max_depth = 15
+        return config
+
+    @staticmethod
+    def donut_optimized():
+        """Configuration optimized for DONUT parser"""
+        config = ModelConfig()
+        config.text_parser_type = 'donut'
+        config.transformer_model_name = 'naver-clova-ix/donut-base'
+        config.transformer_max_length = 128
+        config.tfidf_max_features = 2000
+        config.rf_n_estimators = 200
+        config.rf_max_depth = 15
         return config
 
     @staticmethod

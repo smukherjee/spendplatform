@@ -75,6 +75,12 @@ def main():
         ("Basic Parser + Fast Training", ConfigPresets.fast_training()),
         ("NLTK Parser + Balanced", ConfigPresets.balanced()),
         ("NLTK Parser + High Accuracy", ConfigPresets.high_accuracy()),
+        ("spaCy Parser + Optimized", ConfigPresets.spacy_optimized()),
+        ("BERT Parser + Optimized", ConfigPresets.bert_optimized()),
+        ("RoBERTa Parser + Optimized", ConfigPresets.roberta_optimized()),
+        ("DistilBERT Parser + Fast", ConfigPresets.distilbert_fast()),
+        ("LayoutLMv2 Parser + Optimized", ConfigPresets.layoutlmv2_optimized()),
+        ("DONUT Parser + Optimized", ConfigPresets.donut_optimized()),
         ("Custom: Basic + SVM", create_custom_config('basic', 'svm')),
         ("Custom: NLTK + Logistic Regression", create_custom_config('nltk', 'logistic_regression')),
     ]
@@ -102,6 +108,27 @@ def create_custom_config(parser_type, model_type):
     config = ModelConfig()
     config.text_parser_type = parser_type
     config.model_type = model_type
+    return config
+
+
+def create_transformer_config(parser_type, fast=False):
+    """Create a transformer-based configuration"""
+    config = ModelConfig()
+    config.text_parser_type = parser_type
+
+    if fast:
+        # Fast configuration for DistilBERT
+        config.tfidf_max_features = 1000
+        config.rf_n_estimators = 100
+        config.rf_max_depth = 10
+        config.transformer_max_length = 64  # Shorter sequences for speed
+    else:
+        # High accuracy configuration
+        config.tfidf_max_features = 2000
+        config.rf_n_estimators = 200
+        config.rf_max_depth = 15
+        config.transformer_max_length = 128
+
     return config
 
 

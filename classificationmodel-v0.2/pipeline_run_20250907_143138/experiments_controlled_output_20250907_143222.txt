@@ -1,0 +1,17 @@
+CONTROLLED EXPERIMENT RUNNER RESULTS
+==================================================
+Execution Date: 2025-09-07 14:32:22
+Total Experiments: 9
+Completed: 9
+Failed/Timeouts: 0
+
+RESULTS:
+Basic Parser + Fast Training: 51.03%
+NLTK Parser + Balanced: 55.72%
+NLTK Parser + High Accuracy: 57.22%
+spaCy Parser + Optimized: 60.23%
+BERT Parser + Optimized: 54.41%
+RoBERTa Parser + Optimized: 54.41%
+DistilBERT Parser + Fast: 51.97%
+LayoutLMv2 Parser + Optimized: 54.41%
+DONUT Parser + Optimized: 54.41%

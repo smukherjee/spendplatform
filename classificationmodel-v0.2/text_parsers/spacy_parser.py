@@ -26,7 +26,8 @@ class SpacyTextParser(BaseTextParser):
             print(f"⚠️ spaCy model '{model_name}' not found. Downloading...")
             try:
                 # Try to download the model
-                spacy.cli.download(model_name)
+                import subprocess
+                subprocess.run(['python', '-m', 'spacy', 'download', model_name], check=True)
                 self.nlp = spacy.load(model_name)
                 print(f"✅ Downloaded and loaded spaCy model: {model_name}")
             except Exception as e:
@@ -150,7 +151,7 @@ class SpacyTextParser(BaseTextParser):
         """Get detailed information about this spaCy parser"""
         info = super().get_parser_info()
         info.update({
-            'spacy_version': spacy.__version__,
+            'spacy_version': getattr(spacy, '__version__', 'unknown'),
             'model_name': self.config.get('model_name', 'en_core_web_sm'),
             'use_lemmatization': self.use_lemmatization,
             'use_pos_filtering': self.use_pos_filtering,

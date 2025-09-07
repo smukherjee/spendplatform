@@ -4,10 +4,14 @@ Provides advanced text preprocessing using transformer models (BERT, RoBERTa)
 """
 
 import re
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, TYPE_CHECKING
 import numpy as np
 
 from .base_parser import BaseTextParser
+
+if TYPE_CHECKING:
+    import torch
+    from transformers import PreTrainedModel, PreTrainedTokenizer
 
 
 class TransformerTextParser(BaseTextParser):
@@ -23,8 +27,8 @@ class TransformerTextParser(BaseTextParser):
         self.batch_size = self.config.get('batch_size', 16)
 
         # Initialize transformer model and tokenizer (lazy loading)
-        self.model = None
-        self.tokenizer = None
+        self.model: Optional[Any] = None  # PyTorch model
+        self.tokenizer: Optional[Any] = None  # Transformers tokenizer
         self._model_loaded = False
 
     def _load_model(self):
@@ -39,6 +43,7 @@ class TransformerTextParser(BaseTextParser):
 
             # Move to GPU if available and requested
             if self.use_gpu and torch.cuda.is_available():
+                assert self.model is not None, "Model should be loaded at this point"
                 self.model = self.model.cuda()
                 print("✅ Model moved to GPU")
             elif self.use_gpu and not torch.cuda.is_available():
