@@ -28,7 +28,6 @@ from pathlib import Path
 # Import text parsers and configuration
 from text_parsers import BasicTextParser, NLTKTextParser
 from config import ModelConfig, get_config_from_args
-from typing import Optional, Dict, Any, Union, List
 
 warnings.filterwarnings('ignore')
 
@@ -44,8 +43,6 @@ class MultiLevelSpendCategorizationModel:
         self.feature_names = None
         self.training_data = None
         self.config = config  # Store config for TF-IDF settings
-        # Type annotation for model to help with CatBoost
-        self.model: Optional[Union[RandomForestClassifier, LogisticRegression, SVC, CatBoostClassifier]] = None
 
         # Initialize text parser
         if text_parser is None:
@@ -268,7 +265,7 @@ class MultiLevelSpendCategorizationModel:
         print(classification_report(y_test, y_pred))
 
         # Cross-validation score
-        cv_scores = cross_val_score(self.model, X_test, y_test, cv=5, scoring='accuracy')  # type: ignore
+        cv_scores = cross_val_score(self.model, X_test, y_test, cv=5, scoring='accuracy')
         print(".4f")
 
         return {

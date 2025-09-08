@@ -73,7 +73,7 @@ class ModelConfig:
 
         # Model settings
         self.target_level = 'Category L2'  # Can be L1, L2, L3, L4, or L5
-        self.model_type = 'random_forest'  # 'random_forest', 'logistic_regression', 'svm', or 'catboost'
+        self.model_type = 'random_forest'  # 'random_forest', 'logistic_regression', or 'svm'
         # Model save path will be generated dynamically based on parser type
 
     @property
