@@ -150,9 +150,25 @@ Desktop.ini
 
 # Linux
 .*.swp
-# model files
+
+# Machine Learning Model Files
 *.pkl
 *.joblib
+*.model
+*.h5
+*.hdf5
+*.ckpt
+*.pth
+*.pt
+*.weights
+*.bin
+*.safetensors
+*.onnx
+*.tflite
+*.pb
+models/
+checkpoints/
+weights/
 
 # Logs and databases
 *.log
