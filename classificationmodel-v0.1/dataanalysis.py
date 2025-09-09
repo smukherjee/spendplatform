@@ -22,10 +22,11 @@ class SpendDataAnalyzer:
         """Load all Excel files and prepare data for analysis."""
         try:
             # Load sample spend data
-            self.sample_data = pd.read_excel('/Users/sujoymukherjee/code/spendplatform/context/sample spend data- filled.xlsx')
+            # self.sample_data = pd.read_excel('/Users/sujoymukherjee/code/spendplatform/context/sample spend data- filled.xlsx')
+            self.sample_data = pd.read_excel('/Users/sujoymukherjee/code/spendplatform/context/Copy of Catergorization Working Sheet_Labelled Data for Training.xlsx')
 
             # Load categorization file sheets
-            xls = pd.ExcelFile('/Users/sujoymukherjee/code/spendplatform/context/Categorization File.xlsx')
+            xls = pd.ExcelFile('/Users/sujoymukherjee/code/spendplatform/context/archive/Categorization File.xlsx')
             self.categorization_data = pd.read_excel(xls, 'Working File')
             self.taxonomy_data = pd.read_excel(xls, 'Taxonomy')
 
@@ -317,7 +318,7 @@ class SpendDataAnalyzer:
         print("Starting comprehensive data analysis...")
 
         self.load_data()
-        self.analyze_sample_data()
+        # self.analyze_sample_data()
         self.analyze_categorization_data()
         self.analyze_taxonomy_structure()
         self.create_visualizations()

@@ -1,0 +1,29 @@
+{
+  "deployment": {
+    "environment": "production",
+    "version": "0.6",
+    "deployment_date": "2025-09-09 13:28:48"
+  },
+  "models": {
+    "l2_model_path": "models/production_svm_enhanced.pkl",
+    "l4_model_path": "models/l4_simplified_model.pkl",
+    "l5_model_path": "models/l5_simplified_model.pkl",
+    "taxonomy_path": "data/Categorization File.xlsx"
+  },
+  "thresholds": {
+    "high_confidence": 0.75,
+    "medium_confidence": 0.5,
+    "l5_override": 0.65,
+    "minimum_improvement": 0.05
+  },
+  "performance": {
+    "max_batch_size": 1000,
+    "prediction_timeout": 30,
+    "memory_limit": "1GB"
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/production.log",
+    "max_size": "100MB"
+  }
+}
