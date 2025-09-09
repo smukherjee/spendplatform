@@ -150,6 +150,9 @@ Desktop.ini
 
 # Linux
 .*.swp
+# model files
+*.pkl
+*.joblib
 
 # Logs and databases
 *.log
